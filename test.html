@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Falling Tiles Game</title>
+<title>Random Falling Tiles</title>
 <style>
     body {
         margin: 0;
@@ -50,18 +50,19 @@
 </head>
 <body>
 
-<div id="info">Use arrow keys to move. Don't fall.</div>
+<div id="info">Move with arrow keys. Survive.</div>
 <div id="game"></div>
 
 <script>
 const SIZE = 12;
-const DROP_CHANCE = 0.4;
-const WARNING_TIME = 1000; // 1 second
+const WARNING_TIME = 1000;
+const DROP_INTERVAL = 800;
 
 const game = document.getElementById("game");
 
 let grid = [];
 let player = { x: 6, y: 6 };
+let dropLoop;
 
 function createGrid() {
     game.innerHTML = "";
@@ -80,54 +81,78 @@ function createGrid() {
 
 function drawPlayer() {
     document.querySelectorAll(".tile").forEach(t => t.classList.remove("player"));
-    if (grid[player.y] && grid[player.y][player.x] && grid[player.y][player.x].exists) {
+
+    if (
+        grid[player.y] &&
+        grid[player.y][player.x] &&
+        grid[player.y][player.x].exists
+    ) {
         grid[player.y][player.x].element.classList.add("player");
     } else {
         resetGame();
     }
 }
 
-function dropTile(x, y) {
-    const tile = grid[y][x];
-    if (!tile.exists || tile.dropping) return;
+function getRandomExistingTile() {
+    let existingTiles = [];
 
-    if (Math.random() < DROP_CHANCE) {
-        tile.dropping = true;
-        tile.element.classList.add("warning");
-
-        setTimeout(() => {
-            tile.exists = false;
-            tile.element.classList.remove("warning");
-            tile.element.classList.add("falling");
-        }, WARNING_TIME);
+    for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+            if (grid[y][x].exists && !grid[y][x].dropping) {
+                existingTiles.push({ x, y });
+            }
+        }
     }
+
+    if (existingTiles.length === 0) return null;
+
+    return existingTiles[Math.floor(Math.random() * existingTiles.length)];
+}
+
+function triggerRandomDrop() {
+    const tilePos = getRandomExistingTile();
+    if (!tilePos) return;
+
+    const tile = grid[tilePos.y][tilePos.x];
+    tile.dropping = true;
+    tile.element.classList.add("warning");
+
+    setTimeout(() => {
+        tile.exists = false;
+        tile.element.classList.remove("warning");
+        tile.element.classList.add("falling");
+
+        // If player is standing there → death
+        if (player.x === tilePos.x && player.y === tilePos.y) {
+            resetGame();
+        }
+    }, WARNING_TIME);
 }
 
 function move(dx, dy) {
-    const oldX = player.x;
-    const oldY = player.y;
-
     player.x += dx;
     player.y += dy;
 
-    if (player.x < 0 || player.x >= SIZE || player.y < 0 || player.y >= SIZE) {
+    if (
+        player.x < 0 ||
+        player.x >= SIZE ||
+        player.y < 0 ||
+        player.y >= SIZE ||
+        !grid[player.y][player.x].exists
+    ) {
         resetGame();
         return;
     }
 
-    if (!grid[player.y][player.x].exists) {
-        resetGame();
-        return;
-    }
-
-    dropTile(oldX, oldY);
     drawPlayer();
 }
 
 function resetGame() {
+    clearInterval(dropLoop);
     player = { x: 6, y: 6 };
     createGrid();
     drawPlayer();
+    dropLoop = setInterval(triggerRandomDrop, DROP_INTERVAL);
 }
 
 document.addEventListener("keydown", e => {
@@ -145,5 +170,3 @@ resetGame();
 </body>
 </html>
 
-</body>
-</html>
