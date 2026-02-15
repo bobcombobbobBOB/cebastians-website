@@ -3,97 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Responsive Valentine</title>
+    <title>Valentine's Message</title>
     <style>
-        /* Reset and Base Styles */
         body {
             margin: 0;
             padding: 0;
             background-color: #FFC0CB; /* Pink background */
             display: flex;
-            justify-content: center; /* Center horizontally */
-            align-items: center; /* Center vertically */
+            justify-content: center;
+            align-items: center;
             height: 100vh;
             width: 100vw;
             overflow: hidden;
             font-family: Arial, sans-serif;
         }
 
-        /* Fixed Side Hearts */
-        .side-heart {
+        /* Container for the side heart stacks */
+        .heart-stack {
             position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4vh; /* Spacing between hearts */
             top: 50%;
             transform: translateY(-50%);
-            /* Using vw units makes heart size responsive to screen width */
-            width: 5vw;
-            height: 5vw;
-            min-width: 30px; /* Prevents it from getting too tiny */
-            min-height: 30px;
-            background-color: #DC143C; /* Crimson Red */
         }
 
-        /* Use pseudo-elements to shape the heart */
-        .side-heart, .side-heart::before, .side-heart::after {
+        .left-stack { left: 5vw; }
+        .right-stack { right: 5vw; }
+
+        /* Base heart shape logic */
+        .heart {
+            position: relative;
+            background-color: #DC143C; /* Crimson Red */
+            transform: rotate(-45deg);
+        }
+
+        .heart::before, .heart::after {
             content: "";
             background-color: #DC143C;
-        }
-
-        .side-heart {
-            transform: translateY(-50%) rotate(-45deg);
-        }
-
-        .side-heart::before,
-        .side-heart::after {
-            position: absolute;
-            width: 100%;
-            height: 100%;
             border-radius: 50%;
+            position: absolute;
         }
 
-        .side-heart::before {
-            top: -50%;
-            left: 0;
+        /* Sizing for Standard Hearts */
+        .heart.normal {
+            width: 4vw;
+            height: 4vw;
+            min-width: 25px;
+            min-height: 25px;
         }
-
-        .side-heart::after {
-            left: 50%;
-            top: 0;
+        .heart.normal::before, .heart.normal::after {
+            width: 4vw;
+            height: 4vw;
+            min-width: 25px;
+            min-height: 25px;
         }
+        .heart.normal::before { top: -2vw; left: 0; }
+        .heart.normal::after { left: 2vw; top: 0; }
 
-        /* Snap to sides with a constant margin */
-        .left-heart {
-            left: 5vw; /* Always 5% distance from the left edge */
+        /* Sizing for Small Hearts */
+        .heart.small {
+            width: 2vw;
+            height: 2vw;
+            min-width: 15px;
+            min-height: 15px;
         }
-
-        .right-heart {
-            right: 5vw; /* Always 5% distance from the right edge */
+        .heart.small::before, .heart.small::after {
+            width: 2vw;
+            height: 2vw;
+            min-width: 15px;
+            min-height: 15px;
         }
+        .heart.small::before { top: -1vw; left: 0; }
+        .heart.small::after { left: 1vw; top: 0; }
 
-        /* Centered Responsive Text */
+        /* Responsive, Slanted Text */
         .center-text {
             text-align: center;
-            color: #DC143C;
-            /* Font size scales based on screen width */
-            font-size: calc(2rem + 3vw);
+            color: #9921d1; /* Requested Purple Hex */
+            /* Scaled text size: 25% smaller than the previous build */
+            font-size: calc(1.5rem + 2.25vw); 
             font-weight: bold;
+            font-style: italic; /* Slanted look */
             z-index: 10;
-            padding: 0 15vw; /* Prevents text from overlapping hearts */
+            padding: 0 15vw;
         }
     </style>
 </head>
 <body>
 
-    <!-- Small non-animated hearts on the sides -->
-    <div class="side-heart left-heart"></div>
-    <div class="side-heart right-heart"></div>
+    <!-- Left side stack -->
+    <div class="heart-stack left-stack">
+        <div class="heart normal"></div> <!-- Top -->
+        <div class="heart small"></div>  <!-- Small Above Middle -->
+        <div class="heart normal"></div> <!-- Middle -->
+        <div class="heart small"></div>  <!-- Small Below Middle -->
+        <div class="heart normal"></div> <!-- Bottom -->
+    </div>
 
-    <!-- Centered text that you can edit -->
+    <!-- Right side stack -->
+    <div class="heart-stack right-stack">
+        <div class="heart normal"></div> <!-- Top -->
+        <div class="heart small"></div>  <!-- Small Above Middle -->
+        <div class="heart normal"></div> <!-- Middle -->
+        <div class="heart small"></div>  <!-- Small Below Middle -->
+        <div class="heart normal"></div> <!-- Bottom -->
+    </div>
+
     <div class="center-text">
         To: ??? <br>
         From: ???
     </div>
 
 </body>
-</html>
-
 </html>
