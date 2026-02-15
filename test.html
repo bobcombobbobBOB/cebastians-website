@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Falling Tiles Game</title>
+<style>
+    body {
+        margin: 0;
+        background: #111;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+        color: white;
+        flex-direction: column;
+    }
+
+    #game {
+        display: grid;
+        grid-template-columns: repeat(12, 40px);
+        grid-template-rows: repeat(12, 40px);
+        gap: 2px;
+    }
+
+    .tile {
+        width: 40px;
+        height: 40px;
+        background: #444;
+        transition: transform 0.3s, opacity 0.3s;
+    }
+
+    .player {
+        background: #00ff88;
+    }
+
+    .falling {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+
+    #info {
+        margin-bottom: 10px;
+    }
+</style>
+</head>
+<body>
+
+<div id="info">Use arrow keys to move. Don't fall.</div>
+<div id="game"></div>
+
+<script>
+const SIZE = 12;
+const game = document.getElementById("game");
+
+let grid = [];
+let player = { x: 6, y: 6 };
+
+function createGrid() {
+    game.innerHTML = "";
+    grid = [];
+    for (let y = 0; y < SIZE; y++) {
+        let row = [];
+        for (let x = 0; x < SIZE; x++) {
+            const tile = document.createElement("div");
+            tile.classList.add("tile");
+            game.appendChild(tile);
+            row.push({ element: tile, exists: true });
+        }
+        grid.push(row);
+    }
+}
+
+function drawPlayer() {
+    document.querySelectorAll(".tile").forEach(t => t.classList.remove("player"));
+    if (grid[player.y] && grid[player.y][player.x] && grid[player.y][player.x].exists) {
+        grid[player.y][player.x].element.classList.add("player");
+    } else {
+        resetGame();
+    }
+}
+
+function dropTile(x, y) {
+    if (!grid[y][x].exists) return;
+
+    // random drop chance
+    if (Math.random() < 0.4) {
+        grid[y][x].exists = false;
+        grid[y][x].element.classList.add("falling");
+    }
+}
+
+function move(dx, dy) {
+    const oldX = player.x;
+    const oldY = player.y;
+
+    player.x += dx;
+    player.y += dy;
+
+    if (player.x < 0 || player.x >= SIZE || player.y < 0 || player.y >= SIZE) {
+        resetGame();
+        return;
+    }
+
+    if (!grid[player.y][player.x].exists) {
+        resetGame();
+        return;
+    }
+
+    dropTile(oldX, oldY);
+    drawPlayer();
+}
+
+function resetGame() {
+    player = { x: 6, y: 6 };
+    createGrid();
+    drawPlayer();
+}
+
+document.addEventListener("keydown", e => {
+    switch (e.key) {
+        case "ArrowUp": move(0, -1); break;
+        case "ArrowDown": move(0, 1); break;
+        case "ArrowLeft": move(-1, 0); break;
+        case "ArrowRight": move(1, 0); break;
+    }
+});
+
+resetGame();
+</script>
+
+</body>
+</html>
