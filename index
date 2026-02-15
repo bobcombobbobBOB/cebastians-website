@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Day Heart</title>
+    <style>
+        /* Centering the heart on the page */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #FFB6C1; /* Light Pink background */
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* The Heart Shape: Created using a rotated square and two circles */
+        .heart {
+            background-color: #DC143C; /* Crimson Valentine Red */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            width: 200px;
+            position: relative;
+            transform: rotate(-45deg);
+            /* Pulse animation for a beating effect */
+            animation: pulse 1.5s linear infinite;
+        }
+
+        /* Top circles for the heart using pseudo-elements */
+        .heart:before,
+        .heart:after {
+            content: "";
+            background-color: #DC143C;
+            border-radius: 50%;
+            height: 200px;
+            width: 200px;
+            position: absolute;
+        }
+
+        /* Position the top-left circle */
+        .heart:before {
+            top: -100px;
+            left: 0;
+        }
+
+        /* Position the top-right circle */
+        .heart:after {
+            left: 100px;
+            top: 0;
+        }
+
+        /* Styling the text inside the heart */
+        .heart-text {
+            /* Rotate text back 45 degrees so it is upright */
+            transform: rotate(45deg);
+            color: white;
+            z-index: 1; /* Ensure text stays on top of the circles */
+            text-align: center;
+            font-weight: bold;
+            line-height: 1.5;
+            font-size: 1.2rem;
+        }
+
+        /* Beating animation */
+        @keyframes pulse {
+            0% { transform: rotate(-45deg) scale(1); }
+            25% { transform: rotate(-45deg) scale(1.1); }
+            50% { transform: rotate(-45deg) scale(1); }
+            75% { transform: rotate(-45deg) scale(1.1); }
+            100% { transform: rotate(-45deg) scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="heart">
+        <div class="heart-text">
+            To: lorelei <br>
+            From: cebastian
+        </div>
+    </div>
+
+</body>
+</html>
