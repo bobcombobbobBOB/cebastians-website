@@ -91,35 +91,35 @@ const scoreList = document.getElementById("score-list");
 function startGameWithLogin() {
     const useLogin = confirm("Login with Google to save your high score?\nCancel = anonymous play");
 
+    // Start game immediately no matter what
+    startGameLoop();
+
     if (useLogin) {
         // Initialize Google login
         google.accounts.id.initialize({
             client_id: "78889289023-6vmqn77a85rl1b7644j86orhll78aer9.apps.googleusercontent.com",
             callback: handleCredentialResponse
         });
-        // Prompt user to sign in; once done, handleCredentialResponse will start the game
-        google.accounts.id.prompt();
+        google.accounts.id.prompt(); // login happens in background
     } else {
-        // User chose anonymous → start game immediately
-        loggedIn = false;
-        startGameLoop();
+        loggedIn = false; // anonymous play
     }
 }
 
 function handleCredentialResponse(response) {
-    // Parse the Google credential and get the unique ID
+    // Google login callback
     const token = response.credential;
     const payload = JSON.parse(atob(token.split('.')[1]));
     userId = payload.sub;
     loggedIn = true;
 
-    // Check if user already has a username
+    // Check for existing username
     db.ref('users/' + userId + '/username').get().then(snap => {
         if (snap.exists()) username = snap.val();
-        // Now start the game AFTER login
-        startGameLoop();
+        // From now on, scores and username will be saved online
     });
 }
+
 
 // ================== GRID & PLAYER ===================
 function createGrid() {
