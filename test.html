@@ -27,11 +27,15 @@
         width: 40px;
         height: 40px;
         background: #444;
-        transition: transform 0.3s, opacity 0.3s;
+        transition: background 0.3s, transform 0.4s, opacity 0.4s;
     }
 
     .player {
         background: #00ff88;
+    }
+
+    .warning {
+        background: red !important;
     }
 
     .falling {
@@ -51,6 +55,9 @@
 
 <script>
 const SIZE = 12;
+const DROP_CHANCE = 0.4;
+const WARNING_TIME = 1000; // 1 second
+
 const game = document.getElementById("game");
 
 let grid = [];
@@ -65,7 +72,7 @@ function createGrid() {
             const tile = document.createElement("div");
             tile.classList.add("tile");
             game.appendChild(tile);
-            row.push({ element: tile, exists: true });
+            row.push({ element: tile, exists: true, dropping: false });
         }
         grid.push(row);
     }
@@ -81,12 +88,18 @@ function drawPlayer() {
 }
 
 function dropTile(x, y) {
-    if (!grid[y][x].exists) return;
+    const tile = grid[y][x];
+    if (!tile.exists || tile.dropping) return;
 
-    // random drop chance
-    if (Math.random() < 0.4) {
-        grid[y][x].exists = false;
-        grid[y][x].element.classList.add("falling");
+    if (Math.random() < DROP_CHANCE) {
+        tile.dropping = true;
+        tile.element.classList.add("warning");
+
+        setTimeout(() => {
+            tile.exists = false;
+            tile.element.classList.remove("warning");
+            tile.element.classList.add("falling");
+        }, WARNING_TIME);
     }
 }
 
@@ -128,6 +141,9 @@ document.addEventListener("keydown", e => {
 
 resetGame();
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
