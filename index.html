@@ -1,89 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valentine's Day Heart</title>
+    <title>Responsive Valentine</title>
     <style>
-        /* Centering the heart on the page */
+        /* Reset and Base Styles */
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
-            background-color: #FFB6C1; /* Light Pink background */
-            font-family: 'Arial', sans-serif;
-        }
-
-        /* The Heart Shape: Created using a rotated square and two circles */
-        .heart {
-            background-color: #DC143C; /* Crimson Valentine Red */
+            padding: 0;
+            background-color: #FFC0CB; /* Pink background */
             display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 200px;
-            width: 200px;
-            position: relative;
-            transform: rotate(-45deg);
-            /* Pulse animation for a beating effect */
-            animation: pulse 1.5s linear infinite;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
         }
 
-        /* Top circles for the heart using pseudo-elements */
-        .heart:before,
-        .heart:after {
+        /* Fixed Side Hearts */
+        .side-heart {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            /* Using vw units makes heart size responsive to screen width */
+            width: 5vw;
+            height: 5vw;
+            min-width: 30px; /* Prevents it from getting too tiny */
+            min-height: 30px;
+            background-color: #DC143C; /* Crimson Red */
+        }
+
+        /* Use pseudo-elements to shape the heart */
+        .side-heart, .side-heart::before, .side-heart::after {
             content: "";
             background-color: #DC143C;
-            border-radius: 50%;
-            height: 200px;
-            width: 200px;
-            position: absolute;
         }
 
-        /* Position the top-left circle */
-        .heart:before {
-            top: -100px;
+        .side-heart {
+            transform: translateY(-50%) rotate(-45deg);
+        }
+
+        .side-heart::before,
+        .side-heart::after {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        .side-heart::before {
+            top: -50%;
             left: 0;
         }
 
-        /* Position the top-right circle */
-        .heart:after {
-            left: 100px;
+        .side-heart::after {
+            left: 50%;
             top: 0;
         }
 
-        /* Styling the text inside the heart */
-        .heart-text {
-            /* Rotate text back 45 degrees so it is upright */
-            transform: rotate(45deg);
-            color: white;
-            z-index: 1; /* Ensure text stays on top of the circles */
-            text-align: center;
-            font-weight: bold;
-            line-height: 1.5;
-            font-size: 1.2rem;
+        /* Snap to sides with a constant margin */
+        .left-heart {
+            left: 5vw; /* Always 5% distance from the left edge */
         }
 
-        /* Beating animation */
-        @keyframes pulse {
-            0% { transform: rotate(-45deg) scale(1); }
-            25% { transform: rotate(-45deg) scale(1.1); }
-            50% { transform: rotate(-45deg) scale(1); }
-            75% { transform: rotate(-45deg) scale(1.1); }
-            100% { transform: rotate(-45deg) scale(1); }
+        .right-heart {
+            right: 5vw; /* Always 5% distance from the right edge */
+        }
+
+        /* Centered Responsive Text */
+        .center-text {
+            text-align: center;
+            color: #DC143C;
+            /* Font size scales based on screen width */
+            font-size: calc(2rem + 3vw);
+            font-weight: bold;
+            z-index: 10;
+            padding: 0 15vw; /* Prevents text from overlapping hearts */
         }
     </style>
 </head>
 <body>
 
-    <div class="heart">
-        <div class="heart-text">
-            HAPPY VALENTIMES DAY!!!!
-            To: lorelei <br>
-            From: cebastian
-        </div>
+    <!-- Small non-animated hearts on the sides -->
+    <div class="side-heart left-heart"></div>
+    <div class="side-heart right-heart"></div>
+
+    <!-- Centered text that you can edit -->
+    <div class="center-text">
+        To: ??? <br>
+        From: ???
     </div>
 
 </body>
+</html>
+
 </html>
