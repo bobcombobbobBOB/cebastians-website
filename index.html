@@ -1,119 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valentine's Message</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #ffffff; /* Pink background */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-
-        /* Container for the side heart stacks */
-        .heart-stack {
-            position: absolute;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4vh; /* Spacing between hearts */
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .left-stack { left: 5vw; }
-        .right-stack { right: 5vw; }
-
-        /* Base heart shape logic */
-        .heart {
-            position: relative;
-            background-color: #ffffff; /* Crimson Red */
-            transform: rotate(-45deg);
-        }
-
-        .heart::before, .heart::after {
-            content: "";
-            background-color: #DC143C;
-            border-radius: 50%;
-            position: absolute;
-        }
-
-        /* Sizing for Standard Hearts */
-        .heart.normal {
-            width: 4vw;
-            height: 4vw;
-            min-width: 25px;
-            min-height: 25px;
-        }
-        .heart.normal::before, .heart.normal::after {
-            width: 4vw;
-            height: 4vw;
-            min-width: 25px;
-            min-height: 25px;
-        }
-        .heart.normal::before { top: -2vw; left: 0; }
-        .heart.normal::after { left: 2vw; top: 0; }
-
-        /* Sizing for Small Hearts */
-        .heart.small {
-            width: 2vw;
-            height: 2vw;
-            min-width: 15px;
-            min-height: 15px;
-        }
-        .heart.small::before, .heart.small::after {
-            width: 2vw;
-            height: 2vw;
-            min-width: 15px;
-            min-height: 15px;
-        }
-        .heart.small::before { top: -1vw; left: 0; }
-        .heart.small::after { left: 1vw; top: 0; }
-
-        /* Responsive, Slanted Text */
-        .center-text {
-            text-align: center;
-            color: #9921d1; /* Requested Purple Hex */
-            /* Scaled text size: 25% smaller than the previous build */
-            font-size: calc(1.5rem + 2.25vw); 
-            font-weight: bold;
-            font-style: italic; /* Slanted look */
-            z-index: 10;
-            padding: 0 15vw;
-        }
-    </style>
+<title>Waves :]</title>
+<style>
+    canvas {
+        border: 1px solid black;
+    }
+</style>
 </head>
 <body>
 
-    <!-- Left side stack -->
-    <div class="heart-stack left-stack">
-        <div class="heart normal"></div> <!-- Top -->
-        <div class="heart small"></div>  <!-- Small Above Middle -->
-        <div class="heart normal"></div> <!-- Middle -->
-        <div class="heart small"></div>  <!-- Small Below Middle -->
-        <div class="heart normal"></div> <!-- Bottom -->
-    </div>
+<h1>nice waves...</h1>
+<h2>you should listen to the waves :]</h2>
 
-    <!-- Right side stack -->
-    <div class="heart-stack right-stack">
-        <div class="heart normal"></div> <!-- Top -->
-        <div class="heart small"></div>  <!-- Small Above Middle -->
-        <div class="heart normal"></div> <!-- Middle -->
-        <div class="heart small"></div>  <!-- Small Below Middle -->
-        <div class="heart normal"></div> <!-- Bottom -->
-    </div>
+<div>
+<label for="speed">Speed:</label>
+<input type="number" id="speed" name="speed" value="5">
 
-    <div class="center-text">
-        I SEE YOU 👁️
-    </div>
-
+<label for="height">Height:</label>
+<input type="number" id="height" name="height" value="50">
+</div>
+<canvas id="a" width="1000" height="400"></canvas>
+<script>
+    const canvas = document.getElementById('a');
+    const ctx = canvas.getContext('2d');
+    const speedInput = document.getElementById('speed');
+    const heightInput = document.getElementById('height');
+    let x = 0;
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.beginPath();
+        for (let i = 0; i < canvas.width; i++) {
+            const y = 200 + heightInput.value * Math.sin((i + x) * (speedInput.value / 100));
+            ctx.lineTo(i, y);
+        }
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        x += 5;
+        requestAnimationFrame(draw);
+    }
+    draw();
+</script>
 </body>
 </html>
