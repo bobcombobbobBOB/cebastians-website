@@ -3,8 +3,29 @@
 <head>
 <title>Waves :]</title>
 <style>
+    body {
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #f0f8ff; /* Light blue tint */
+    }
     canvas {
-        border: 1px solid black;
+        border: 2px solid #0000ff;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .controls {
+        margin: 20px;
+        padding: 10px;
+        background: #fff;
+        border-radius: 5px;
+    }
+    /* GitHub Visitor Badge Styling */
+    .visitor-badge {
+        margin-top: 30px;
+        filter: hue-rotate(25deg) brightness(0.9); /* Makes the badge a "Wave Blue" */
     }
 </style>
 </head>
@@ -13,34 +34,44 @@
 <h1>nice waves...</h1>
 <h2>you should listen to the waves :]</h2>
 
-<div>
-<label for="speed">Speed:</label>
-<input type="number" id="speed" name="speed" value="5">
+<div class="controls">
+    <label for="speed">Speed:</label>
+    <input type="number" id="speed" name="speed" value="5">
 
-<label for="height">Height:</label>
-<input type="number" id="height" name="height" value="50">
+    <label for="height">Height:</label>
+    <input type="number" id="height" name="height" value="50">
 </div>
+
 <canvas id="a" width="1000" height="400"></canvas>
+
+<!-- GitHub Live Visitor Counter -->
+<div class="visitor-badge">
+    <img src="https://komarev.com" alt="visitor count">
+</div>
+
 <script>
     const canvas = document.getElementById('a');
     const ctx = canvas.getContext('2d');
     const speedInput = document.getElementById('speed');
     const heightInput = document.getElementById('height');
     let x = 0;
+    
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.beginPath();
         for (let i = 0; i < canvas.width; i++) {
+            // Updated wave logic to stay blue and smooth
             const y = 200 + heightInput.value * Math.sin((i + x) * (speedInput.value / 100));
             ctx.lineTo(i, y);
         }
         ctx.strokeStyle = 'blue';
         ctx.lineWidth = 4;
         ctx.stroke();
-        x += 5;
+        x += 2; // Slowed base x increment slightly for smoother flow
         requestAnimationFrame(draw);
     }
     draw();
 </script>
 </body>
 </html>
+
