@@ -9,8 +9,9 @@ html, body {
     background:#111; color:white; font-family:Arial,sans-serif;
     display:flex; flex-direction:column; align-items:center; overflow:hidden;
 }
-#top-bar { display:flex; justify-content:center; width:100%; margin-top:5px; position:relative; z-index:2; }
+#top-bar { display:flex; justify-content:center; width:100%; margin-top:5px; position:relative; z-index:2; align-items:center; }
 #scoreboard-btn { background:#333; color:white; padding:6px 12px; border:none; cursor:pointer; font-size:1em; border-radius:5px; }
+#current-score { margin-left:20px; font-size:1em; }
 #scoreboard { position:absolute; top:50px; width:80%; max-width:500px; background:#222; border:2px solid #555; padding:10px; display:none; flex-direction:column; gap:4px; z-index:3; max-height:70%; overflow-y:auto; }
 #scoreboard h3 { margin:0; margin-bottom:5px; text-align:center; }
 #close-scoreboard { margin-top:5px; align-self:center; padding:4px 10px; border:none; border-radius:3px; cursor:pointer; }
@@ -29,6 +30,7 @@ html, body {
 
 <div id="top-bar">
     <button id="scoreboard-btn">Score Board</button>
+    <div id="current-score">Score: 0</div>
 </div>
 
 <div id="scoreboard">
@@ -80,46 +82,53 @@ let paused = false;
 let loggedIn = false;
 let userId = null;
 let username = null;
+let pendingScore = null;
 
 const game = document.getElementById("game");
 const deathScreen = document.getElementById("death-screen");
 const deathScore = document.getElementById("death-score");
 const scoreboard = document.getElementById("scoreboard");
 const scoreList = document.getElementById("score-list");
+const currentScoreDiv = document.getElementById("current-score");
 
 // ================== GOOGLE LOGIN ===================
 function startGameWithLogin() {
     const useLogin = confirm("Login with Google to save your high score?\nCancel = anonymous play");
 
-    // Start game immediately no matter what
+    // Start game only after player makes a choice
     startGameLoop();
 
-    if (useLogin) {
-        // Initialize Google login
+    if(useLogin){
         google.accounts.id.initialize({
             client_id: "78889289023-6vmqn77a85rl1b7644j86orhll78aer9.apps.googleusercontent.com",
             callback: handleCredentialResponse
         });
-        google.accounts.id.prompt(); // login happens in background
+        google.accounts.id.prompt();
     } else {
-        loggedIn = false; // anonymous play
+        loggedIn = false;
     }
 }
 
 function handleCredentialResponse(response) {
-    // Google login callback
     const token = response.credential;
     const payload = JSON.parse(atob(token.split('.')[1]));
     userId = payload.sub;
     loggedIn = true;
 
-    // Check for existing username
     db.ref('users/' + userId + '/username').get().then(snap => {
-        if (snap.exists()) username = snap.val();
-        // From now on, scores and username will be saved online
+        if(snap.exists()) username = snap.val();
+
+        // If player already died while logging in, save pending score
+        if(pendingScore !== null){
+            if(!username){
+                username = prompt("Enter a username for your high score:");
+                if(username) db.ref('users/'+userId+'/username').set(username);
+            }
+            db.ref('scores/'+userId).set({username: username || "Player", score: pendingScore});
+            pendingScore = null;
+        }
     });
 }
-
 
 // ================== GRID & PLAYER ===================
 function createGrid() {
@@ -167,6 +176,7 @@ function triggerRandomDrop() {
         tile.element.classList.remove("warning");
         tile.element.classList.add("falling");
         score++;
+        currentScoreDiv.textContent = "Score: " + score;
         if(player.x===t.x && player.y===t.y) gameOver();
     }, WARNING_TIME);
 }
@@ -185,18 +195,22 @@ function gameOver(){
     clearInterval(dropLoop);
     deathScore.textContent = "Score: " + score;
     deathScreen.style.display="flex";
-    if(loggedIn && !username){
-        username = prompt("Enter a username for your high score:");
-        if(username) db.ref('users/'+userId+'/username').set(username);
-    }
-    if(loggedIn && username){
-        db.ref('scores/'+userId).set({username, score});
+
+    if(loggedIn){
+        if(!username){
+            username = prompt("Enter a username for your high score:");
+            if(username) db.ref('users/'+userId+'/username').set(username);
+        }
+        db.ref('scores/'+userId).set({username: username || "Player", score});
+    } else {
+        pendingScore = score; // save later if login completes
     }
 }
 
 function startGameLoop(){
     paused=false;
     score=0;
+    currentScoreDiv.textContent = "Score: " + score;
     player = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
     createGrid();
     drawPlayer();
@@ -249,7 +263,5 @@ startGameWithLogin();
 </script>
 
 </body>
-</html>
-
 </html>
 
