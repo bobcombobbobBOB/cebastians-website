@@ -98,10 +98,14 @@ const waitingScreen = document.getElementById("waiting-screen");
 
 // ================== GOOGLE LOGIN ===================
 function startGameWithLogin() {
-    const useLogin = confirm("Login with Google to save your high score?\nCancel = anonymous play");
+    if(typeof google === 'undefined') {
+        // Retry after short delay
+        setTimeout(startGameWithLogin, 100);
+        return;
+    }
 
+    const useLogin = confirm("Login with Google to save your high score?\nCancel = anonymous play");
     if(useLogin){
-        // Show waiting screen
         waitingScreen.style.display = "flex";
         google.accounts.id.initialize({
             client_id: "78889289023-6vmqn77a85rl1b7644j86orhll78aer9.apps.googleusercontent.com",
@@ -114,6 +118,7 @@ function startGameWithLogin() {
         startGameLoop();
     }
 }
+
 
 function handleCredentialResponse(response){
     const token = response.credential;
@@ -171,6 +176,9 @@ function getRandomExistingTile() {
 
 function triggerRandomDrop() {
     if(paused) return;
+    // If any tile is currently warning, skip this round
+    if(grid.flat().some(t => t.dropping && !t.exists)) return;
+
     const t = getRandomExistingTile();
     if(!t) return;
     const tile = grid[t.y][t.x];
@@ -185,6 +193,7 @@ function triggerRandomDrop() {
         if(player.x===t.x && player.y===t.y) gameOver();
     }, WARNING_TIME);
 }
+
 
 function move(dx,dy){
     if(paused) return;
