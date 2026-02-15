@@ -5,14 +5,10 @@
 <title>Falling Tiles 18x18</title>
 <style>
 html, body { margin:0; padding:0; height:100%; width:100%; background:#111; color:white; font-family:Arial,sans-serif; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
-#top-bar { display:flex; justify-content:center; width:100%; margin-top:5px; position:relative; z-index:2; align-items:center; }
-#scoreboard-btn { background:#333; color:white; padding:6px 12px; border:none; cursor:pointer; font-size:1em; border-radius:5px; }
-#current-score { margin-left:20px; font-size:1em; }
-#scoreboard { position:absolute; top:50px; width:80%; max-width:500px; background:#222; border:2px solid #555; padding:10px; display:none; flex-direction:column; gap:4px; z-index:3; max-height:70%; overflow-y:auto; }
-#scoreboard h3 { margin:0; margin-bottom:5px; text-align:center; }
-#close-scoreboard { margin-top:5px; align-self:center; padding:4px 10px; border:none; border-radius:3px; cursor:pointer; }
+#top-bar { display:flex; justify-content:center; width:100%; margin-top:5px; align-items:center; }
+#current-score { font-size:1em; }
 #game-container { flex:1; display:flex; justify-content:center; align-items:center; width:100%; }
-#game { display:grid; grid-template-columns: repeat(18, 1fr); grid-template-rows: repeat(18, 1fr); gap:2px; width:90vmin; height:90vmin; display:none; }
+#game { display:grid; grid-template-columns: repeat(18, 1fr); grid-template-rows: repeat(18, 1fr); gap:2px; width:90vmin; height:90vmin; }
 .tile { background:#444; width:100%; height:100%; transition: background 0.3s, transform 0.4s, opacity 0.4s; }
 .player { background:#0f0 !important; }
 .warning { background:red !important; }
@@ -20,20 +16,12 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 #death-screen { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:5; }
 #death-screen h2, #death-screen p { margin:5px; text-align:center; }
 #play-again { margin-top:10px; padding:6px 12px; cursor:pointer; border:none; border-radius:5px; }
-#waiting-screen { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; font-size:2em; color:white; background:#111; z-index:10; }
 </style>
 </head>
 <body>
 
 <div id="top-bar">
-    <button id="scoreboard-btn">Score Board</button>
     <div id="current-score">Score: 0</div>
-</div>
-
-<div id="scoreboard">
-    <h3>Leaderboard</h3>
-    <div id="score-list"></div>
-    <button id="close-scoreboard">Close</button>
 </div>
 
 <div id="game-container">
@@ -46,118 +34,118 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
     <button id="play-again">Play Again</button>
 </div>
 
-<div id="waiting-screen">Connecting… Please wait.</div>
-
-<!-- Firebase + Google Sign-In -->
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-<script src="https://accounts.google.com/gsi/client" defer onload="startGameWithLogin()"></script>
-
 <script>
-// ================= CONFIG ===================
-const firebaseConfig = {
-  apiKey: "AIzaSyBZB140VKMpt-nnZPaRuq49G2YXIOHy4x0",
-  authDomain: "server-cebastian.firebaseapp.com",
-  databaseURL: "https://server-cebastian-default-rtdb.firebaseio.com",
-  projectId: "server-cebastian",
-  storageBucket: "server-cebastian.firebasestorage.app",
-  messagingSenderId: "78889289023",
-  appId: "1:78889289023:web:4c5be58e2dea6af83cff8a",
-  measurementId: "G-MF1WX4WDZT"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-// ================= GAME ===================
 const SIZE = 18;
 const WARNING_TIME = 1000;
 const DROP_INTERVAL = 800;
 
-let grid=[], player={x: Math.floor(SIZE/2), y: Math.floor(SIZE/2)}, dropLoop, score=0, paused=false, loggedIn=false, userId=null, username=null;
+const game = document.getElementById("game");
+const deathScreen = document.getElementById("death-screen");
+const deathScore = document.getElementById("death-score");
+const currentScoreDiv = document.getElementById("current-score");
 
-const game=document.getElementById("game");
-const deathScreen=document.getElementById("death-screen");
-const deathScore=document.getElementById("death-score");
-const scoreboard=document.getElementById("scoreboard");
-const scoreList=document.getElementById("score-list");
-const currentScoreDiv=document.getElementById("current-score");
-const waitingScreen=document.getElementById("waiting-screen");
+let grid = [];
+let player = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
+let dropLoop;
+let score = 0;
+let paused = false;
 
-// ================= GOOGLE LOGIN ===================
-function startGameWithLogin(){
-    if(typeof google==='undefined'){ setTimeout(startGameWithLogin,100); return; }
-    const useLogin=confirm("Login with Google to save your high score?\nCancel = anonymous play");
-    if(useLogin){
-        waitingScreen.style.display="flex";
-        google.accounts.id.initialize({client_id:"78889289023-6vmqn77a85rl1b7644j86orhll78aer9.apps.googleusercontent.com", callback:handleCredentialResponse});
-        google.accounts.id.prompt();
-    } else {
-        loggedIn=false;
-        waitingScreen.style.display="none";
-        startGameLoop();
+function createGrid() {
+    game.innerHTML = "";
+    grid = [];
+    for(let y=0;y<SIZE;y++){
+        let row=[];
+        for(let x=0;x<SIZE;x++){
+            const tile=document.createElement("div");
+            tile.classList.add("tile");
+            game.appendChild(tile);
+            row.push({element:tile, exists:true, dropping:false});
+        }
+        grid.push(row);
     }
 }
 
-function handleCredentialResponse(response){
-    const payload=JSON.parse(atob(response.credential.split('.')[1]));
-    userId=payload.sub;
-    loggedIn=true;
-
-    db.ref('users/'+userId+'/username').get().then(snap=>{
-        waitingScreen.style.display="none";
-        if(snap.exists()) username=snap.val();
-        else {
-            username=prompt("Enter a username for your high score:");
-            if(username) db.ref('users/'+userId+'/username').set(username);
-        }
-        startGameLoop();
-    });
+function drawPlayer() {
+    document.querySelectorAll(".tile").forEach(t=>t.classList.remove("player"));
+    if(grid[player.y] && grid[player.y][player.x] && grid[player.y][player.x].exists){
+        grid[player.y][player.x].element.classList.add("player");
+    } else {
+        gameOver();
+    }
 }
 
-// ================= GRID & PLAYER ===================
-function createGrid(){ game.innerHTML=""; grid=[]; for(let y=0;y<SIZE;y++){ let row=[]; for(let x=0;x<SIZE;x++){ const tile=document.createElement("div"); tile.classList.add("tile"); game.appendChild(tile); row.push({element:tile, exists:true, dropping:false}); } grid.push(row); } game.style.display="grid"; }
-
-function drawPlayer(){ document.querySelectorAll(".tile").forEach(t=>t.classList.remove("player")); if(grid[player.y] && grid[player.y][player.x] && grid[player.y][player.x].exists) grid[player.y][player.x].element.classList.add("player"); else gameOver(); }
-
-function getRandomExistingTile(){ let existing=[]; for(let y=0;y<SIZE;y++){ for(let x=0;x<SIZE;x++){ if(grid[y][x].exists && !grid[y][x].dropping) existing.push({x,y}); } } if(existing.length===0) return null; return existing[Math.floor(Math.random()*existing.length)]; }
+function getRandomExistingTile(){
+    let existing=[];
+    for(let y=0;y<SIZE;y++){
+        for(let x=0;x<SIZE;x++){
+            if(grid[y][x].exists && !grid[y][x].dropping) existing.push({x,y});
+        }
+    }
+    if(existing.length===0) return null;
+    return existing[Math.floor(Math.random()*existing.length)];
+}
 
 function triggerRandomDrop(){
     if(paused) return;
-    if(grid.flat().some(t=>t.dropping && !t.exists)) return;
-    const t=getRandomExistingTile(); if(!t) return;
-    const tile=grid[t.y][t.x]; tile.dropping=true; tile.element.classList.add("warning");
+    if(grid.flat().some(t=>t.dropping && !t.exists)) return; // only one tile at a time
+    const t=getRandomExistingTile();
+    if(!t) return;
+    const tile = grid[t.y][t.x];
+    tile.dropping=true;
+    tile.element.classList.add("warning");
     setTimeout(()=>{
-        tile.exists=false; tile.element.classList.remove("warning"); tile.element.classList.add("falling");
-        score++; currentScoreDiv.textContent="Score: "+score;
+        tile.exists=false;
+        tile.element.classList.remove("warning");
+        tile.element.classList.add("falling");
+        score++;
+        currentScoreDiv.textContent = "Score: " + score;
         if(player.x===t.x && player.y===t.y) gameOver();
     }, WARNING_TIME);
 }
 
-function move(dx,dy){ if(paused) return; player.x+=dx; player.y+=dy; if(player.x<0||player.x>=SIZE||player.y<0||player.y>=SIZE||!grid[player.y][player.x].exists){ gameOver(); return; } drawPlayer(); }
+function move(dx,dy){
+    if(paused) return;
+    player.x+=dx; player.y+=dy;
+    if(player.x<0||player.x>=SIZE||player.y<0||player.y>=SIZE||!grid[player.y][player.x].exists){
+        gameOver();
+        return;
+    }
+    drawPlayer();
+}
 
 function gameOver(){
-    paused=true; clearInterval(dropLoop);
-    deathScore.textContent="Score: "+score; deathScreen.style.display="flex";
-    if(loggedIn && userId && username) db.ref('scores/'+userId).set({username:username, score}).then(()=>updateLeaderboard());
+    paused=true;
+    clearInterval(dropLoop);
+    deathScore.textContent="Score: "+score;
+    deathScreen.style.display="flex";
 }
 
-function startGameLoop(){ paused=false; score=0; currentScoreDiv.textContent="Score: "+score; player={x: Math.floor(SIZE/2), y: Math.floor(SIZE/2)}; createGrid(); drawPlayer(); dropLoop=setInterval(triggerRandomDrop, DROP_INTERVAL); }
-
-// ================= INPUT ===================
-document.addEventListener("keydown",e=>{ switch(e.key){ case "ArrowUp": move(0,-1); break; case "ArrowDown": move(0,1); break; case "ArrowLeft": move(-1,0); break; case "ArrowRight": move(1,0); break; } });
-
-document.getElementById("play-again").addEventListener("click",()=>{ deathScreen.style.display="none"; startGameLoop(); });
-
-// ================= SCOREBOARD ===================
-document.getElementById("scoreboard-btn").addEventListener("click",()=>{ paused=true; scoreboard.style.display="flex"; updateLeaderboard(); });
-document.getElementById("close-scoreboard").addEventListener("click",()=>{ scoreboard.style.display="none"; paused=false; });
-
-function updateLeaderboard(){
-    db.ref('scores').orderByChild('score').limitToLast(10).get().then(snap=>{
-        scoreList.innerHTML=""; const arr=[]; snap.forEach(s=>arr.push(s.val())); arr.sort((a,b)=>b.score-b.score); arr.forEach(s=>{ const div=document.createElement("div"); div.textContent=s.username+": "+s.score; scoreList.appendChild(div); });
-    });
+function startGameLoop(){
+    paused=false;
+    score=0;
+    currentScoreDiv.textContent="Score: "+score;
+    player={ x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
+    createGrid();
+    drawPlayer();
+    dropLoop = setInterval(triggerRandomDrop,DROP_INTERVAL);
 }
+
+document.addEventListener("keydown", e=>{
+    switch(e.key){
+        case "ArrowUp": move(0,-1); break;
+        case "ArrowDown": move(0,1); break;
+        case "ArrowLeft": move(-1,0); break;
+        case "ArrowRight": move(1,0); break;
+    }
+});
+
+document.getElementById("play-again").addEventListener("click",()=>{
+    deathScreen.style.display="none";
+    startGameLoop();
+});
+
+startGameLoop();
 </script>
+
 </body>
 </html>
-
