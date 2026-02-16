@@ -1,0 +1,103 @@
+body {
+    background-color: #222;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    border: 4px solid #444;
+    background-color: #333;
+}
+
+canvas {
+    display: block;
+    background-color: #4a4a4a; /* Map Floor Color */
+}
+
+/* UI Layers */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Let clicks pass through to canvas */
+}
+
+#stats-bar {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: auto;
+}
+
+#shop-bar {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+    pointer-events: auto;
+}
+
+button {
+    background: #ffcc00;
+    border: none;
+    padding: 8px 16px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+button:disabled {
+    background: #555;
+    cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+    background: #ffdb4d;
+}
+
+/* Start Screen & Game Over */
+#start-screen, #game-over-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.menu-section {
+    margin: 15px 0;
+    text-align: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.shop-item {
+    border: 2px solid white;
+    padding: 5px;
+    background: #444;
+}
