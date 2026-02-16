@@ -12,46 +12,55 @@
 
         <div id="ui-layer">
             <div id="stats-bar" class="hidden">
-                <span>❤️ HP: <span id="hp-display">100</span></span>
-                <span>💰 Money: $<span id="money-display">100</span></span>
-                <span>🌊 Wave: <span id="wave-display">1</span></span>
-                <span id="wave-status">WAITING</span>
-                <button id="next-wave-btn">Start Wave</button>
+                <div class="stat-box">❤️ HP: <span id="hp-display">100</span></div>
+                <div class="stat-box">💰 Cash: $<span id="money-display">100</span></div>
+                <div class="stat-box">🌊 Wave: <span id="wave-display">1</span></div>
+                <button id="next-wave-btn">⚔️ START WAVE</button>
             </div>
             
             <div id="shop-bar" class="hidden">
-                <div class="shop-item" onclick="selectTower('basic')">
-                    <b>Basic (Blue)</b><br>$50
+                <div class="shop-item" id="shop-basic" onclick="selectTower('basic')">
+                    <div class="icon blue"></div>
+                    <span>Gunner</span>
+                    <span class="cost">$50</span>
                 </div>
-                <div class="shop-item" onclick="selectTower('sniper')">
-                    <b>Sniper (Yellow)</b><br>$500
+                <div class="shop-item" id="shop-sniper" onclick="selectTower('sniper')">
+                    <div class="icon yellow"></div>
+                    <span>Sniper</span>
+                    <span class="cost">$500</span>
                 </div>
-                <div id="message-box">
-                    Select a tower to build.<br>Click existing to Upgrade.
-                </div>
+                <div id="info-msg">Select a tower to build.</div>
             </div>
         </div>
 
         <div id="start-screen">
             <h1>👑 Bob's Crown 👑</h1>
-            <div class="menu-section">
-                <h3>1. Select Difficulty</h3>
-                <button onclick="setDifficulty('easy')">Easy</button>
-                <button onclick="setDifficulty('normal')">Normal</button>
-                <button onclick="setDifficulty('hard')">Hard</button>
-                <p id="selected-diff">Selected: None</p>
+            
+            <div class="menu-group">
+                <h3>1. Difficulty</h3>
+                <div class="btn-row">
+                    <button onclick="setDifficulty('easy')">Easy</button>
+                    <button onclick="setDifficulty('normal')">Normal</button>
+                    <button onclick="setDifficulty('hard')">Hard</button>
+                </div>
+                <p id="diff-status">Select Difficulty</p>
             </div>
-            <div class="menu-section">
-                <h3>2. Enable Health?</h3>
-                <button onclick="setHealthMode(true)">Yes (100 HP)</button>
-                <button onclick="setHealthMode(false)">No (1 Hit Death)</button>
-                <p id="selected-health">Selected: None</p>
+
+            <div class="menu-group">
+                <h3>2. Health Mode</h3>
+                <div class="btn-row">
+                    <button onclick="setHealthMode(true)">100 HP</button>
+                    <button onclick="setHealthMode(false)">1 Hit Death</button>
+                </div>
+                <p id="hp-status">Select Health</p>
             </div>
-            <button id="start-btn" disabled onclick="startGame()">START GAME</button>
+
+            <button id="start-game-btn" disabled onclick="startGame()">PLAY GAME</button>
         </div>
 
         <div id="game-over-screen" class="hidden">
             <h1>GAME OVER</h1>
+            <p>The Crown was taken!</p>
             <button onclick="location.reload()">Try Again</button>
         </div>
     </div>
