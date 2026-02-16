@@ -9,9 +9,14 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 #game-container { flex:1; display:flex; justify-content:center; align-items:center; width:100%; }
 #game { display:grid; grid-template-columns: repeat(18, 1fr); grid-template-rows: repeat(18, 1fr); gap:2px; width:90vmin; height:90vmin; }
 .tile { background:#444; width:100%; height:100%; transition: background 0.3s, transform 0.4s, opacity 0.4s; }
-.player { background:#0f0 !important; }
+
+/* Safe tile styling */
+.safe-zone { background: #222 !important; border: 1px solid #444; }
+
+.player { background:#0f0 !important; z-index: 2; }
 .warning { background:red !important; }
 .falling { transform:translateY(50px); opacity:0; }
+
 #death-screen { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:5; }
 #death-screen h2, #death-screen p { margin:5px; text-align:center; }
 #play-again { margin-top:10px; padding:6px 12px; cursor:pointer; border:none; border-radius:5px; }
@@ -46,7 +51,7 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 </div>
 
 <div id="death-screen">
-    <h2>You Died!</h2>
+    <h2 id="death-title">You Died!</h2>
     <p id="death-score"></p>
     <button id="play-again">Play Again</button>
 </div>
@@ -58,8 +63,9 @@ const DROP_INTERVAL = 800;
 
 const game = document.getElementById("game");
 const deathScreen = document.getElementById("death-screen");
+const deathTitle = document.getElementById("death-title");
 const deathScore = document.getElementById("death-score");
-const scoreSpan = document.getElementById("score-val"); // NEW: Only targets the number
+const scoreSpan = document.getElementById("score-val");
 
 let grid = [];
 let player = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
@@ -80,9 +86,7 @@ function toggleMusic() {
         btn.style.background = "#444";
         isMusicOn = false;
     } else {
-        bgm.play().catch(e => {
-            console.log("Error playing:", e);
-        });
+        bgm.play().catch(e => console.log("Error playing:", e));
         btn.innerText = "🎵 Music: ON";
         btn.style.background = "#00b894"; 
         isMusicOn = true;
@@ -97,6 +101,8 @@ function createGrid() {
         for(let x=0;x<SIZE;x++){
             const tile=document.createElement("div");
             tile.classList.add("tile");
+            // Highlight the safe spawn tile
+            if(x === 9 && y === 9) tile.classList.add("safe-zone");
             game.appendChild(tile);
             row.push({element:tile, exists:true, dropping:false});
         }
@@ -109,7 +115,7 @@ function drawPlayer() {
     if(grid[player.y] && grid[player.y][player.x] && grid[player.y][player.x].exists){
         grid[player.y][player.x].element.classList.add("player");
     } else {
-        gameOver();
+        endGame(false);
     }
 }
 
@@ -117,60 +123,83 @@ function getRandomExistingTile(){
     let existing=[];
     for(let y=0;y<SIZE;y++){
         for(let x=0;x<SIZE;x++){
+            // RULE: Never pick the center tile (9,9)
+            if (x === 9 && y === 9) continue;
+            
             if(grid[y][x].exists && !grid[y][x].dropping) existing.push({x,y});
         }
     }
-    if(existing.length===0) return null;
-    return existing[Math.floor(Math.random()*existing.length)];
+    return existing.length === 0 ? null : existing[Math.floor(Math.random()*existing.length)];
 }
 
 function triggerRandomDrop(){
     if(paused) return;
-    if(grid.flat().some(t=>t.dropping && !t.exists)) return; 
-    const t=getRandomExistingTile();
+    
+    const t = getRandomExistingTile();
     if(!t) return;
+    
     const tile = grid[t.y][t.x];
     tile.dropping=true;
     tile.element.classList.add("warning");
+    
     setTimeout(()=>{
+        if (paused) return;
         tile.exists=false;
         tile.element.classList.remove("warning");
         tile.element.classList.add("falling");
         score++;
-        
-        // FIX: Only update the number, leave the credits alone!
         scoreSpan.textContent = score; 
         
-        if(player.x===t.x && player.y===t.y) gameOver();
+        if(player.x===t.x && player.y===t.y) {
+            endGame(false);
+        } else {
+            checkWinCondition();
+        }
         tile.dropping = false;
     }, WARNING_TIME);
+}
+
+function checkWinCondition() {
+    // Count how many tiles still exist
+    let remaining = 0;
+    for(let y=0; y<SIZE; y++) {
+        for(let x=0; x<SIZE; x++) {
+            if(grid[y][x].exists) remaining++;
+        }
+    }
+    // If only the safe tile remains, you win!
+    if (remaining === 1) {
+        endGame(true);
+    }
 }
 
 function move(dx,dy){
     if(paused) return;
     player.x+=dx; player.y+=dy;
     if(player.x<0||player.x>=SIZE||player.y<0||player.y>=SIZE||!grid[player.y][player.x].exists){
-        gameOver();
+        endGame(false);
         return;
     }
     drawPlayer();
 }
 
-function gameOver(){
+function endGame(isWin){
     paused=true;
     clearInterval(dropLoop);
-    deathScore.textContent="Final Score: "+score;
-    deathScreen.style.display="flex";
+    deathTitle.textContent = isWin ? "YOU WIN!" : "You Died!";
+    deathTitle.style.color = isWin ? "#f1c40f" : "red";
+    deathScore.textContent = "Final Score: " + score;
+    deathScreen.style.display = "flex";
 }
 
 function startGameLoop(){
     paused=false;
     score=0;
-    scoreSpan.textContent = score; // Reset only the number
-    player={ x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
+    scoreSpan.textContent = score;
+    player={ x: 9, y: 9 }; // Center spawn
     createGrid();
     drawPlayer();
-    dropLoop = setInterval(triggerRandomDrop,DROP_INTERVAL);
+    dropLoop = setInterval(triggerRandomDrop, DROP_INTERVAL);
 }
 
 document.addEventListener("keydown", e=>{
