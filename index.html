@@ -9,6 +9,9 @@
         flex-direction: column;
         align-items: center;
         background-color: #f0f8ff; /* Light blue tint */
+        position: relative; /* Needed for positioning the button */
+        min-height: 100vh;
+        margin: 0;
     }
     canvas {
         border: 2px solid #0000ff;
@@ -22,9 +25,39 @@
         background: #fff;
         border-radius: 5px;
     }
+    
+    /* Music Button & Credit Styling */
+    #sound-container {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: right;
+    }
+    .credit-text {
+        font-size: 12px;
+        color: #555;
+        margin-bottom: 5px;
+    }
+    #music-btn {
+        background: #444;
+        color: white;
+        padding: 10px 15px;
+        border: 1px solid #777;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
 </style>
 </head>
 <body>
+
+<div id="sound-container">
+    <div class="credit-text">Sound by Zapsplat</div>
+    <button id="music-btn" onclick="toggleWaves()">🎵 Waves: OFF</button>
+</div>
 
 <h1>nice waves...</h1>
 <h2>you should listen to the waves :]</h2>
@@ -36,11 +69,14 @@
     <label for="height">Height:</label>
     <input type="number" id="height" name="height" value="50">
 </div>
-    
 
 <canvas id="a" width="1000" height="400"></canvas>
 
-<div>
+<audio id="wave-audio" loop>
+    <source src="zapsplat_pack_ocean_waves_mp3.mp3" type="audio/mpeg">
+</audio>
+
+<div style="margin-top: 20px;">
   <p>
     'DON'T FALL' falling tiles (this will open new tab):
     <a href="https://cebastians.site/test.html" target="_blank" rel="noopener noreferrer">
@@ -57,30 +93,47 @@
   </p>
 </div>
 
-    
 <script>
     const canvas = document.getElementById('a');
     const ctx = canvas.getContext('2d');
     const speedInput = document.getElementById('speed');
     const heightInput = document.getElementById('height');
+    const audio = document.getElementById('wave-audio');
     let x = 0;
+    let isPlaying = false;
+    
+    // --- Music Toggle Logic ---
+    function toggleWaves() {
+        const btn = document.getElementById('music-btn');
+        if (isPlaying) {
+            audio.pause();
+            btn.innerText = "🎵 Waves: OFF";
+            btn.style.background = "#444";
+            isPlaying = false;
+        } else {
+            audio.play().catch(e => console.log("Audio load error:", e));
+            btn.innerText = "🎵 Waves: ON";
+            btn.style.background = "#00b894"; // Green when on
+            isPlaying = true;
+        }
+    }
     
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.beginPath();
         for (let i = 0; i < canvas.width; i++) {
-            // Updated wave logic to stay blue and smooth
             const y = 200 + heightInput.value * Math.sin((i + x) * (speedInput.value / 100));
             ctx.lineTo(i, y);
         }
         ctx.strokeStyle = 'blue';
         ctx.lineWidth = 4;
         ctx.stroke();
-        x += 2; // Slowed base x increment slightly for smoother flow
+        x += 2; 
         requestAnimationFrame(draw);
     }
     draw();
 </script>
 </body>
+</html>
 </html>
 
