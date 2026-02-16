@@ -1,1 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bob's Crown - Tower Defense</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <div id="ui-layer">
+            <div id="stats-bar" class="hidden">
+                <span>❤️ HP: <span id="hp-display">100</span></span>
+                <span>💰 Money: $<span id="money-display">100</span></span>
+                <span>🌊 Wave: <span id="wave-display">1</span></span>
+                <button id="next-wave-btn">Start Next Wave</button>
+            </div>
+            
+            <div id="shop-bar" class="hidden">
+                <div class="shop-item selected" id="buy-tower">
+                    Basic Tower ($50)<br><small>Click map to place</small>
+                </div>
+                <div id="message-box">Click a tower to Upgrade ($100)</div>
+            </div>
+        </div>
+
+        <div id="start-screen">
+            <h1>👑 Bob's Crown 👑</h1>
+            <p>Defend the crown!</p>
+            
+            <div class="menu-section">
+                <h3>1. Select Difficulty</h3>
+                <button class="diff-btn" onclick="setDifficulty('easy')">Easy</button>
+                <button class="diff-btn" onclick="setDifficulty('normal')">Normal</button>
+                <button class="diff-btn" onclick="setDifficulty('hard')">Hard</button>
+                <p id="selected-diff">Selected: None</p>
+            </div>
+
+            <div class="menu-section">
+                <h3>2. Enable Health?</h3>
+                <button class="health-btn" onclick="setHealthMode(true)">Yes (100 HP)</button>
+                <button class="health-btn" onclick="setHealthMode(false)">No (1 Hit Death)</button>
+                <p id="selected-health">Selected: None</p>
+            </div>
+
+            <button id="start-btn" disabled onclick="startGame()">START GAME</button>
+        </div>
+
+        <div id="game-over-screen" class="hidden">
+            <h1 id="game-over-title">GAME OVER</h1>
+            <p>You survived <span id="final-wave">0</span> waves.</p>
+            <button onclick="location.reload()">Try Again</button>
+        </div>
+    </div>
+
+    <audio id="bgm" loop>
+        <source src="pixel-notmadebyme.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
