@@ -1,97 +1,229 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- Game Configuration ---
+// --- Configuration ---
+// The Path (Points connected by lines)
 const path = [
     {x: 0, y: 100}, {x: 200, y: 100}, {x: 200, y: 400}, 
     {x: 500, y: 400}, {x: 500, y: 200}, {x: 700, y: 200}, {x: 700, y: 500}
 ];
-const crownRect = { x: 680, y: 480, w: 40, h: 40 }; // Yellow Box Crown
-const pathWidth = 40; 
+const pathWidth = 50; // How wide the road is
 
-// 7 Enemy Levels
+// The Crown (Yellow Box)
+const crown = { x: 680, y: 480, w: 40, h: 40 };
+
+// Enemy Definitions (7 Levels)
 const enemyTypes = [
-    { color: '#FF0000', hp: 20, speed: 2, reward: 10 },    // 1: Red
-    { color: '#FFFF00', hp: 40, speed: 3, reward: 15 },    // 2: Yellow
-    { color: '#00FF00', hp: 80, speed: 1.5, reward: 20 },  // 3: Green
-    { color: '#800080', hp: 150, speed: 2.5, reward: 30 }, // 4: Purple
-    { color: '#8B4513', hp: 300, speed: 1, reward: 40 },   // 5: Brown
-    { color: '#808080', hp: 500, speed: 1.2, reward: 50 }, // 6: Grey
-    { color: '#000000', hp: 1000, speed: 0.8, reward: 100 }// 7: Black
+    { id: 1, color: '#ff7675', hp: 20, speed: 2.5, reward: 15 },   // Red (Fast/Weak)
+    { id: 2, color: '#ffeaa7', hp: 40, speed: 3.0, reward: 20 },   // Yellow (Faster)
+    { id: 3, color: '#55efc4', hp: 90, speed: 2.0, reward: 25 },   // Green (Tanky)
+    { id: 4, color: '#a29bfe', hp: 150, speed: 3.5, reward: 35 },  // Purple (Boss Speed)
+    { id: 5, color: '#d35400', hp: 300, speed: 1.5, reward: 45 },  // Brown (Armored)
+    { id: 6, color: '#636e72', hp: 600, speed: 1.8, reward: 60 },  // Grey (Super Tank)
+    { id: 7, color: '#000000', hp: 1200, speed: 1.0, reward: 100 } // Black (The End)
 ];
 
-let gameState = {
+// --- Game State ---
+let game = {
+    running: false,
     money: 100,
-    lives: 100,
+    hp: 100,
     wave: 1,
-    gameActive: false,
-    waveActive: false, // Is a wave currently running?
-    spawnQueue: [],    // List of enemies waiting to spawn this wave
+    waveActive: false, // Strict locking variable
+    frames: 0,
+    difficulty: 'normal',
     enemies: [],
     towers: [],
     projectiles: [],
-    frames: 0,
-    selectedTowerType: null // 'basic' or 'sniper'
+    spawnQueue: [], // Enemies waiting to enter map
+    selection: null // 'basic' or 'sniper'
 };
 
-// --- Setup ---
-let selectedDiff = null;
-let healthModeSet = null;
+let settings = { diff: null, hpMode: null };
 
-function setDifficulty(diff) {
-    selectedDiff = diff;
-    document.getElementById('selected-diff').innerText = "Selected: " + diff.toUpperCase();
-    checkStart();
+// --- Setup Functions ---
+function setDifficulty(d) {
+    settings.diff = d;
+    document.getElementById('diff-status').innerText = "Selected: " + d.toUpperCase();
+    checkReady();
 }
-function setHealthMode(mode) {
-    healthModeSet = mode;
-    document.getElementById('selected-health').innerText = mode ? "Selected: 100 HP" : "Selected: 1 HIT DEATH";
-    checkStart();
+function setHealthMode(h) {
+    settings.hpMode = h;
+    document.getElementById('hp-status').innerText = h ? "100 HP" : "1 Hit KO";
+    checkReady();
 }
-function checkStart() {
-    if(selectedDiff && healthModeSet !== null) document.getElementById('start-btn').disabled = false;
+function checkReady() {
+    if (settings.diff && settings.hpMode !== null) {
+        document.getElementById('start-game-btn').disabled = false;
+    }
 }
 
 function startGame() {
-    gameState.lives = healthModeSet ? 100 : 1;
-    gameState.money = selectedDiff === 'easy' ? 250 : (selectedDiff === 'hard' ? 100 : 150);
-    gameState.gameActive = true;
+    // Apply Settings
+    game.hp = settings.hpMode ? 100 : 1;
+    game.money = settings.diff === 'easy' ? 250 : (settings.diff === 'hard' ? 100 : 150);
+    game.running = true;
+
+    // UI Updates
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('stats-bar').classList.remove('hidden');
     document.getElementById('shop-bar').classList.remove('hidden');
     
-    // Try play audio
-    document.getElementById('bgm').volume = 0.2;
-    document.getElementById('bgm').play().catch(() => {});
-    
+    // Audio
+    let audio = document.getElementById('bgm');
+    audio.volume = 0.2;
+    audio.play().catch(e => console.log("Audio waiting for interaction"));
+
     updateUI();
     gameLoop();
 }
 
-// --- Classes ---
-class Enemy {
-    constructor(levelIndex) {
-        // Clamp level index 0-6
-        let idx = Math.min(levelIndex, 6);
-        let type = enemyTypes[idx];
-        
-        // Difficulty scaling multiplier
-        let diffMult = selectedDiff === 'hard' ? 1.5 : (selectedDiff === 'easy' ? 0.7 : 1.0);
+// --- Wave Logic ---
+document.getElementById('next-wave-btn').addEventListener('click', () => {
+    // STRICT CHECK: If wave is active, DO NOTHING.
+    if (game.waveActive) return;
 
+    startWave();
+});
+
+function startWave() {
+    game.waveActive = true;
+    updateUI(); // This will disable the button
+
+    // Generate Enemies based on Wave Number
+    let count = 5 + (game.wave * 2);
+    game.spawnQueue = [];
+
+    for (let i = 0; i < count; i++) {
+        // Higher waves unlock higher tier enemies
+        let maxTier = Math.min(Math.ceil(game.wave / 2), 7);
+        let tier = Math.floor(Math.random() * maxTier);
+        game.spawnQueue.push(tier);
+    }
+    // Sort weak to strong
+    game.spawnQueue.sort((a,b) => a - b);
+}
+
+// --- Interaction Logic ---
+function selectTower(type) {
+    game.selection = type;
+    // UI Feedback
+    document.querySelectorAll('.shop-item').forEach(i => i.classList.remove('selected'));
+    document.getElementById('shop-' + type).classList.add('selected');
+    document.getElementById('info-msg').innerText = "Click map to place " + type;
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    if (!game.running) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // 1. Check for Upgrade (Clicking existing tower)
+    let clickedTower = game.towers.find(t => Math.hypot(t.x - x, t.y - y) < 20);
+    if (clickedTower) {
+        clickedTower.upgrade();
+        return;
+    }
+
+    // 2. Placement Logic
+    if (game.selection) {
+        // STRICT CHECK: Can't build during wave
+        if (game.waveActive) {
+            alert("⚠️ Wait for the wave to end!");
+            return;
+        }
+
+        let cost = game.selection === 'basic' ? 50 : 500;
+        if (game.money < cost) {
+            alert("💸 Not enough money!");
+            return;
+        }
+
+        // STRICT CHECK: Collision
+        if (checkPlacementCollision(x, y)) {
+            alert("🚫 Invalid Position! (Path, Crown, or Overlap)");
+            return;
+        }
+
+        // Success - Build Tower
+        game.towers.push(new Tower(x, y, game.selection));
+        game.money -= cost;
+        game.selection = null; // Deselect
+        document.querySelectorAll('.shop-item').forEach(i => i.classList.remove('selected'));
+        document.getElementById('info-msg').innerText = "Tower placed!";
+        updateUI();
+    }
+});
+
+// --- THE HARD MATH: COLLISION ---
+function checkPlacementCollision(x, y) {
+    const towerRadius = 20; // Assume tower size
+
+    // 1. Check Canvas Bounds
+    if (x < 20 || x > 780 || y < 20 || y > 580) return true;
+
+    // 2. Check Crown (Rectangle Overlap)
+    // Expand crown rect by tower radius to ensure no touching
+    if (x > crown.x - towerRadius && x < crown.x + crown.w + towerRadius &&
+        y > crown.y - towerRadius && y < crown.y + crown.h + towerRadius) {
+        return true;
+    }
+
+    // 3. Check Other Towers (Distance)
+    for (let t of game.towers) {
+        if (Math.hypot(t.x - x, t.y - y) < 40) return true; // 40 = 2 * radius (touching)
+    }
+
+    // 4. Check Path (Point to Line Segment Distance)
+    for (let i = 0; i < path.length - 1; i++) {
+        let A = path[i];
+        let B = path[i+1];
+        
+        let dist = distToSegment(x, y, A.x, A.y, B.x, B.y);
+        
+        // If distance is less than (RoadWidth/2 + TowerRadius), it touches the road
+        if (dist < (pathWidth / 2) + 15) return true;
+    }
+
+    return false; // Safe
+}
+
+// Math Helper: Distance from Point(px,py) to Line Segment(x1,y1)-(x2,y2)
+function distToSegment(px, py, x1, y1, x2, y2) {
+    let l2 = (x2 - x1)**2 + (y2 - y1)**2;
+    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+    
+    let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+    t = Math.max(0, Math.min(1, t)); // Clamp t to segment
+    
+    let projX = x1 + t * (x2 - x1);
+    let projY = y1 + t * (y2 - y1);
+    
+    return Math.hypot(px - projX, py - projY);
+}
+
+
+// --- Game Classes ---
+class Enemy {
+    constructor(tierIdx) {
+        let type = enemyTypes[tierIdx];
+        this.tier = tierIdx;
         this.wpIndex = 0;
         this.x = path[0].x;
         this.y = path[0].y;
-        this.color = type.color;
-        this.radius = 12 + idx; // Harder enemies are slightly bigger
-        this.speed = type.speed; 
-        this.hp = type.hp * diffMult;
+        this.hp = type.hp * (settings.diff === 'hard' ? 1.5 : 1);
         this.maxHp = this.hp;
+        this.speed = type.speed;
+        this.color = type.color;
         this.reward = type.reward;
+        this.radius = 12 + tierIdx; // Higher tier = slightly bigger
     }
 
     update() {
         let target = path[this.wpIndex + 1];
-        if(!target) return; 
+        if (!target) return; // Should catch end of path
 
         let dx = target.x - this.x;
         let dy = target.y - this.y;
@@ -101,11 +233,11 @@ class Enemy {
             this.x = target.x;
             this.y = target.y;
             this.wpIndex++;
-            // Reached Crown
+            
+            // Reached the end (Crown)
             if (this.wpIndex >= path.length - 1) {
-                this.hp = 0;
-                gameState.lives--;
-                if(gameState.lives <= 0) endGame();
+                this.hp = 0; // Die
+                takeDamage();
             }
         } else {
             this.x += (dx / dist) * this.speed;
@@ -116,10 +248,11 @@ class Enemy {
     draw() {
         ctx.fillStyle = this.color;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
         ctx.fill();
-        ctx.strokeStyle = 'white';
-        ctx.stroke(); // Outline to see black units
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
     }
 }
 
@@ -129,52 +262,55 @@ class Tower {
         this.y = y;
         this.type = type;
         this.level = 1;
-        this.cooldown = 0;
-
+        this.timer = 0;
+        
         if (type === 'basic') {
-            this.range = 120;
-            this.damage = 15;
-            this.maxCooldown = 40;
-            this.color = 'blue';
-            this.size = 20;
-        } else if (type === 'sniper') {
+            this.range = 130;
+            this.dmg = 10;
+            this.cooldown = 40;
+            this.color = '#0984e3';
+        } else {
             this.range = 300;
-            this.damage = 100;
-            this.maxCooldown = 120; // Slow fire
-            this.color = 'yellow';
-            this.size = 25;
+            this.dmg = 80;
+            this.cooldown = 120;
+            this.color = '#fdcb6e';
         }
     }
 
     upgrade() {
-        let cost = this.type === 'sniper' ? 500 : 100; // Expensive upgrade for sniper
-        if (gameState.money >= cost) {
-            gameState.money -= cost;
+        if (game.waveActive) return; // Optional: Can disable upgrade during wave if desired
+
+        let cost = this.type === 'basic' ? 100 : 500;
+        if (game.money >= cost) {
+            game.money -= cost;
             this.level++;
-            this.damage *= 1.5;
-            // Upgrade fire rate
-            if(this.maxCooldown > 10) this.maxCooldown *= 0.85; 
+            this.dmg *= 1.4;
+            this.range += 10;
+            if (this.cooldown > 10) this.cooldown *= 0.9;
             updateUI();
         }
     }
 
     update() {
-        if (this.cooldown > 0) this.cooldown--;
+        if (this.timer > 0) this.timer--;
         else {
-            const target = gameState.enemies.find(e => Math.hypot(e.x - this.x, e.y - this.y) <= this.range);
+            let target = game.enemies.find(e => Math.hypot(e.x - this.x, e.y - this.y) < this.range);
             if (target) {
-                gameState.projectiles.push(new Projectile(this.x, this.y, target, this.damage, this.type));
-                this.cooldown = this.maxCooldown;
+                game.projectiles.push(new Projectile(this.x, this.y, target, this.dmg, this.type));
+                this.timer = this.cooldown;
             }
         }
     }
 
     draw() {
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+        ctx.fillRect(this.x - 15, this.y - 15, 30, 30);
+        
+        // Draw Range if selected? No, simple logic for now.
+        // Level Text
         ctx.fillStyle = 'white';
-        ctx.font = '10px Arial';
-        ctx.fillText("Lvl " + this.level, this.x - 10, this.y - 15);
+        ctx.font = '12px Arial';
+        ctx.fillText(this.level, this.x - 4, this.y + 5);
     }
 }
 
@@ -184,28 +320,26 @@ class Projectile {
         this.y = y;
         this.target = target;
         this.damage = dmg;
+        this.type = type;
         this.hit = false;
-        
-        if (type === 'sniper') {
-            this.speed = 15;
-            this.radius = 8;
-            this.color = 'yellow';
-        } else {
-            this.speed = 8;
-            this.radius = 4;
-            this.color = 'cyan';
-        }
+        this.speed = type === 'sniper' ? 12 : 6;
     }
 
     update() {
-        if (!gameState.enemies.includes(this.target)) { this.hit = true; return; }
+        if (!game.enemies.includes(this.target)) {
+            this.hit = true; 
+            return;
+        }
+
         let dx = this.target.x - this.x;
         let dy = this.target.y - this.y;
         let dist = Math.hypot(dx, dy);
 
         if (dist < this.speed) {
             this.target.hp -= this.damage;
-            if (this.target.hp <= 0) gameState.money += this.target.reward;
+            if (this.target.hp <= 0) {
+                game.money += this.target.reward;
+            }
             this.hit = true;
         } else {
             this.x += (dx / dist) * this.speed;
@@ -214,212 +348,100 @@ class Projectile {
     }
 
     draw() {
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = this.type === 'sniper' ? 'yellow' : 'cyan';
+        let size = this.type === 'sniper' ? 6 : 3;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, size, 0, Math.PI*2);
         ctx.fill();
     }
 }
 
-// --- Logic ---
-function selectTower(type) {
-    if (gameState.waveActive) return; // Cannot select during wave
-    gameState.selectedTowerType = type;
-    
-    // Highlight UI
-    document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
-    if(type === 'basic') document.querySelectorAll('.shop-item')[0].classList.add('selected');
-    if(type === 'sniper') document.querySelectorAll('.shop-item')[1].classList.add('selected');
-}
-
-function startNextWave() {
-    if (gameState.waveActive) return;
-    
-    gameState.waveActive = true;
-    gameState.spawnQueue = [];
-    
-    // Generate Wave Enemies
-    // Logic: Wave 1 = Level 0 enemies. Wave 10 = Mix of level 0,1,2 etc.
-    let count = 5 + Math.floor(gameState.wave * 1.5);
-    for(let i=0; i<count; i++) {
-        // Simple logic: higher wave allows higher level enemy types
-        let maxEnemyLevel = Math.min(Math.floor(gameState.wave / 3), 6); 
-        let enemyLvl = Math.floor(Math.random() * (maxEnemyLevel + 1));
-        gameState.spawnQueue.push(enemyLvl);
-    }
-    
-    // Sort so weaker ones come first usually, or random
-    gameState.spawnQueue.sort((a,b) => a - b);
-    
-    updateUI();
-    document.getElementById('shop-bar').classList.add('shop-disabled');
-}
-
+// --- Main Loop ---
 function update() {
-    if (!gameState.gameActive) return;
-    gameState.frames++;
+    if (!game.running) return;
+    game.frames++;
 
-    // Spawning
-    if (gameState.waveActive && gameState.spawnQueue.length > 0 && gameState.frames % 60 === 0) {
-        let lvl = gameState.spawnQueue.shift();
-        gameState.enemies.push(new Enemy(lvl));
+    // Spawning Logic
+    if (game.waveActive && game.frames % 60 === 0 && game.spawnQueue.length > 0) {
+        let tier = game.spawnQueue.shift();
+        game.enemies.push(new Enemy(tier));
     }
 
-    // Check Wave End
-    if (gameState.waveActive && gameState.spawnQueue.length === 0 && gameState.enemies.length === 0) {
-        gameState.waveActive = false;
-        gameState.wave++;
-        document.getElementById('shop-bar').classList.remove('shop-disabled');
-        updateUI();
+    // End Wave Logic
+    if (game.waveActive && game.spawnQueue.length === 0 && game.enemies.length === 0) {
+        game.waveActive = false;
+        game.wave++;
+        updateUI(); // Re-enable button
     }
 
-    gameState.enemies.forEach(e => e.update());
-    gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
-    gameState.towers.forEach(t => t.update());
-    gameState.projectiles.forEach(p => p.update());
-    gameState.projectiles = gameState.projectiles.filter(p => !p.hit);
+    // Entities
+    game.enemies.forEach(e => e.update());
+    game.enemies = game.enemies.filter(e => e.hp > 0);
+    game.towers.forEach(t => t.update());
+    game.projectiles.forEach(p => p.update());
+    game.projectiles = game.projectiles.filter(p => !p.hit);
     
     updateUI();
 }
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Background
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0,0, canvas.width, canvas.height);
 
     // Draw Path
-    ctx.strokeStyle = '#444';
-    ctx.lineWidth = pathWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    ctx.lineWidth = pathWidth;
+    ctx.strokeStyle = '#333';
     ctx.beginPath();
     ctx.moveTo(path[0].x, path[0].y);
     path.forEach(p => ctx.lineTo(p.x, p.y));
     ctx.stroke();
 
     // Draw Crown (Yellow Box)
-    ctx.fillStyle = 'gold';
-    ctx.fillRect(crownRect.x, crownRect.y, crownRect.w, crownRect.h);
-    ctx.strokeStyle = 'orange';
+    ctx.fillStyle = '#f1c40f'; // Gold
+    ctx.fillRect(crown.x, crown.y, crown.w, crown.h);
+    // Crown Detail (Box outline)
+    ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
-    ctx.strokeRect(crownRect.x, crownRect.y, crownRect.w, crownRect.h);
+    ctx.strokeRect(crown.x, crown.y, crown.w, crown.h);
 
-    gameState.towers.forEach(t => t.draw());
-    gameState.enemies.forEach(e => e.draw());
-    gameState.projectiles.forEach(p => p.draw());
+    // Entities
+    game.towers.forEach(t => t.draw());
+    game.enemies.forEach(e => e.draw());
+    game.projectiles.forEach(p => p.draw());
 }
 
 function gameLoop() {
     update();
     draw();
-    if (gameState.gameActive) requestAnimationFrame(gameLoop);
+    if (game.running) requestAnimationFrame(gameLoop);
 }
 
-function endGame() {
-    gameState.gameActive = false;
-    document.getElementById('game-over-screen').classList.remove('hidden');
+function takeDamage() {
+    game.hp--;
+    updateUI();
+    if (game.hp <= 0) {
+        game.running = false;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+    }
 }
 
 function updateUI() {
-    document.getElementById('hp-display').innerText = gameState.lives;
-    document.getElementById('money-display').innerText = Math.floor(gameState.money);
-    document.getElementById('wave-display').innerText = gameState.wave;
-    
+    document.getElementById('hp-display').innerText = game.hp;
+    document.getElementById('money-display').innerText = Math.floor(game.money);
+    document.getElementById('wave-display').innerText = game.wave;
+
+    // Handle Button State
     const btn = document.getElementById('next-wave-btn');
-    const status = document.getElementById('wave-status');
-    
-    if (gameState.waveActive) {
+    if (game.waveActive) {
         btn.disabled = true;
-        status.innerText = "ATTACKING!";
-        status.style.color = "red";
+        btn.innerText = "⚠️ DEFEND! ⚠️";
+        btn.classList.add('disabled'); // Ensure CSS style applies
     } else {
         btn.disabled = false;
-        status.innerText = "SAFE";
-        status.style.color = "lime";
+        btn.innerText = "⚔️ START WAVE";
+        btn.classList.remove('disabled');
     }
 }
-
-// --- Interaction & Collision ---
-
-// Check if a point collides with the path (rectangle segments)
-function isMsgOnPath(x, y, buffer) {
-    for (let i = 0; i < path.length - 1; i++) {
-        let p1 = path[i];
-        let p2 = path[i+1];
-        
-        // Define bounding box of segment
-        let minX = Math.min(p1.x, p2.x) - (pathWidth/2 + buffer);
-        let maxX = Math.max(p1.x, p2.x) + (pathWidth/2 + buffer);
-        let minY = Math.min(p1.y, p2.y) - (pathWidth/2 + buffer);
-        let maxY = Math.max(p1.y, p2.y) + (pathWidth/2 + buffer);
-
-        if (x >= minX && x <= maxX && y >= minY && y <= maxY) return true;
-    }
-    return false;
-}
-
-// Check Crown Collision
-function isMsgOnCrown(x, y) {
-    return (x > crownRect.x - 20 && x < crownRect.x + crownRect.w + 20 &&
-            y > crownRect.y - 20 && y < crownRect.y + crownRect.h + 20);
-}
-
-document.getElementById('next-wave-btn').addEventListener('click', startNextWave);
-
-canvas.addEventListener('mousedown', (e) => {
-    if (!gameState.gameActive) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // 1. Check if clicking existing tower (Upgrade)
-    // Only allow upgrades if NOT in placement mode, OR if we click on a tower while in placement mode
-    const clickedTower = gameState.towers.find(t => Math.hypot(t.x - x, t.y - y) < 25);
-    
-    if (clickedTower) {
-        clickedTower.upgrade();
-        gameState.selectedTowerType = null; // Cancel build mode if we clicked a tower
-        document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
-        return;
-    }
-
-    // 2. Try Place Tower
-    if (gameState.selectedTowerType) {
-        if (gameState.waveActive) {
-            alert("Cannot build during waves!");
-            return;
-        }
-
-        let cost = gameState.selectedTowerType === 'basic' ? 50 : 500;
-        
-        if (gameState.money < cost) {
-            alert("Not enough money!");
-            return;
-        }
-
-        // Collision Checks
-        if (isMsgOnPath(x, y, 10)) {
-            alert("Cannot build on the path!");
-            return;
-        }
-        if (isMsgOnCrown(x, y)) {
-            alert("Cannot build on the Crown!");
-            return;
-        }
-
-        // Check distance to other towers
-        let tooClose = gameState.towers.some(t => Math.hypot(t.x - x, t.y - y) < 45); // 45px buffer
-        if (tooClose) {
-            alert("Too close to another tower!");
-            return;
-        }
-
-        // Place it
-        gameState.towers.push(new Tower(x, y, gameState.selectedTowerType));
-        gameState.money -= cost;
-        
-        // Deselect
-        gameState.selectedTowerType = null;
-        document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
-        updateUI();
-    }
-});
