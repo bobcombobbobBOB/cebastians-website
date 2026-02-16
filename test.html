@@ -10,8 +10,7 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 #game { display:grid; grid-template-columns: repeat(18, 1fr); grid-template-rows: repeat(18, 1fr); gap:2px; width:90vmin; height:90vmin; }
 .tile { background:#444; width:100%; height:100%; transition: background 0.3s, transform 0.4s, opacity 0.4s; }
 
-/* Visual marker for the safe 9,9 tile */
-.safe-zone { background: #222 !important; border: 1px solid #333; }
+/* Removed .safe-zone style so everything looks identical */
 
 .player { background:#0f0 !important; z-index: 2; }
 .warning { background:red !important; }
@@ -37,7 +36,7 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 <body>
 
 <div id="top-bar">
-    <div>(V1.02) Score: <span id="score-val">0</span></div>
+    <div>(V:1.03) Score: <span id="score-val">0</span></div>
     <div class="credits">Song: John Bartmann</div>
     <button id="music-btn" onclick="toggleMusic()">🎵 Music: OFF</button>
 </div>
@@ -68,7 +67,7 @@ const deathScore = document.getElementById("death-score");
 const scoreSpan = document.getElementById("score-val");
 
 let grid = [];
-let player = { x: 9, y: 9 }; // SET TO 9,9
+let player = { x: 9, y: 9 }; 
 let dropLoop;
 let score = 0;
 let paused = false;
@@ -101,8 +100,7 @@ function createGrid() {
         for(let x=0;x<SIZE;x++){
             const tile=document.createElement("div");
             tile.classList.add("tile");
-            // Mark the center safe tile
-            if(x === 9 && y === 9) tile.classList.add("safe-zone");
+            // Removed the line that added the 'safe-zone' class
             game.appendChild(tile);
             row.push({element:tile, exists:true, dropping:false});
         }
@@ -123,7 +121,7 @@ function getRandomExistingTile(){
     let existing=[];
     for(let y=0;y<SIZE;y++){
         for(let x=0;x<SIZE;x++){
-            // RULE: Skip 9,9 so it never falls
+            // THE LOGIC IS STILL HERE: Skip 9,9 so it never falls
             if (x === 9 && y === 9) continue;
             
             if(grid[y][x].exists && !grid[y][x].dropping) existing.push({x,y});
@@ -134,14 +132,11 @@ function getRandomExistingTile(){
 
 function triggerRandomDrop(){
     if(paused) return;
-    
     const t = getRandomExistingTile();
     if(!t) return;
-    
     const tile = grid[t.y][t.x];
     tile.dropping=true;
     tile.element.classList.add("warning");
-    
     setTimeout(()=>{
         if (paused) return;
         tile.exists=false;
@@ -149,7 +144,6 @@ function triggerRandomDrop(){
         tile.element.classList.add("falling");
         score++;
         scoreSpan.textContent = score; 
-        
         if(player.x===t.x && player.y===t.y) {
             endGame(false);
         } else {
@@ -166,7 +160,6 @@ function checkWinCondition() {
             if(grid[y][x].exists) count++;
         }
     }
-    // Only the center tile left? Win!
     if (count === 1) endGame(true);
 }
 
@@ -193,7 +186,7 @@ function startGameLoop() {
     paused=false;
     score=0;
     scoreSpan.textContent = score;
-    player = { x: 9, y: 9 }; // ENSURE SPAWN AT 9,9
+    player = { x: 9, y: 9 }; 
     createGrid();
     drawPlayer();
     dropLoop = setInterval(triggerRandomDrop, DROP_INTERVAL);
