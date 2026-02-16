@@ -3,72 +3,582 @@
 <head>
     <meta charset="UTF-8">
     <title>Bob's Crown - Tower Defense</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* --- CSS STYLES --- */
+        body {
+            background-color: #000;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: #222;
+            border: 4px solid #444;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        canvas { display: block; cursor: crosshair; }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Top Bar */
+        #stats-bar {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: auto;
+            border-bottom: 2px solid #555;
+        }
+        .stat-box { font-size: 18px; font-weight: bold; color: #fff; }
+        .highlight { color: #f1c40f; }
+
+        /* Bottom Bar (Shop) */
+        #shop-bar {
+            background: rgba(0, 0, 0, 0.95);
+            padding: 10px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            pointer-events: auto;
+            border-top: 2px solid #555;
+        }
+
+        .shop-item {
+            border: 2px solid #444;
+            background: #333;
+            padding: 10px;
+            width: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .shop-item:hover { background: #444; border-color: #aaa; transform: translateY(-2px); }
+        .shop-item.selected { border-color: #00b894; background: #2f3640; box-shadow: 0 0 15px rgba(0, 184, 148, 0.4); }
+
+        .icon { width: 30px; height: 30px; margin-bottom: 5px; border-radius: 4px; }
+        .icon.blue { background: #0984e3; }
+        .icon.yellow { background: #fdcb6e; }
+
+        /* Buttons */
+        button {
+            background: #00b894;
+            border: none;
+            padding: 12px 24px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+        button:hover { background: #00cec9; transform: scale(1.05); }
+        button:disabled, button.disabled {
+            background: #636e72; color: #b2bec3;
+            cursor: not-allowed; transform: none;
+        }
+
+        /* Start Screen & Game Over */
+        #start-screen, #game-over-screen {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(15, 15, 15, 0.98);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 50; pointer-events: auto;
+        }
+        h1 { color: #f1c40f; font-size: 48px; margin-bottom: 10px; text-shadow: 2px 2px #000; }
+        .menu-group { margin-bottom: 30px; text-align: center; }
+        .btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+        .status-txt { color: #aaa; margin-top: 5px; font-size: 14px; }
+        
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="game-wrapper">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-        <div id="ui-layer">
-            <div id="stats-bar" class="hidden">
-                <div class="stat-box">❤️ HP: <span id="hp-display">100</span></div>
-                <div class="stat-box">💰 Cash: $<span id="money-display">100</span></div>
-                <div class="stat-box">🌊 Wave: <span id="wave-display">1</span></div>
-                <button id="next-wave-btn">⚔️ START WAVE</button>
-            </div>
-            
-            <div id="shop-bar" class="hidden">
-                <div class="shop-item" id="shop-basic" onclick="selectTower('basic')">
-                    <div class="icon blue"></div>
-                    <span>Gunner</span>
-                    <span class="cost">$50</span>
-                </div>
-                <div class="shop-item" id="shop-sniper" onclick="selectTower('sniper')">
-                    <div class="icon yellow"></div>
-                    <span>Sniper</span>
-                    <span class="cost">$500</span>
-                </div>
-                <div id="info-msg">Select a tower to build.</div>
-            </div>
+    <div id="ui-layer">
+        <div id="stats-bar" class="hidden">
+            <div class="stat-box">❤️ HP: <span id="hp-display" class="highlight">100</span></div>
+            <div class="stat-box">💰 Cash: $<span id="money-display" class="highlight">100</span></div>
+            <div class="stat-box">🌊 Wave: <span id="wave-display" class="highlight">1</span></div>
+            <button id="next-wave-btn">⚔️ START WAVE</button>
         </div>
 
-        <div id="start-screen">
-            <h1>👑 Bob's Crown 👑</h1>
-            
-            <div class="menu-group">
-                <h3>1. Difficulty</h3>
-                <div class="btn-row">
-                    <button onclick="setDifficulty('easy')">Easy</button>
-                    <button onclick="setDifficulty('normal')">Normal</button>
-                    <button onclick="setDifficulty('hard')">Hard</button>
-                </div>
-                <p id="diff-status">Select Difficulty</p>
+        <div id="shop-bar" class="hidden">
+            <div class="shop-item" id="shop-basic" onclick="gameApp.selectTower('basic')">
+                <div class="icon blue"></div>
+                <span>Gunner</span>
+                <span style="color: #00b894; font-weight: bold;">$50</span>
             </div>
-
-            <div class="menu-group">
-                <h3>2. Health Mode</h3>
-                <div class="btn-row">
-                    <button onclick="setHealthMode(true)">100 HP</button>
-                    <button onclick="setHealthMode(false)">1 Hit Death</button>
-                </div>
-                <p id="hp-status">Select Health</p>
+            <div class="shop-item" id="shop-sniper" onclick="gameApp.selectTower('sniper')">
+                <div class="icon yellow"></div>
+                <span>Sniper</span>
+                <span style="color: #fdcb6e; font-weight: bold;">$500</span>
             </div>
-
-            <button id="start-game-btn" disabled onclick="startGame()">PLAY GAME</button>
-        </div>
-
-        <div id="game-over-screen" class="hidden">
-            <h1>GAME OVER</h1>
-            <p>The Crown was taken!</p>
-            <button onclick="location.reload()">Try Again</button>
+            <div id="info-msg" style="margin-left: 20px; color: #ccc;">Select a unit to build.</div>
         </div>
     </div>
 
-    <audio id="bgm" loop>
-        <source src="pixel-notmadebyme.mp3" type="audio/mpeg">
-    </audio>
+    <div id="start-screen">
+        <h1>👑 Bob's Crown 👑</h1>
+        
+        <div class="menu-group">
+            <h3>1. Select Difficulty</h3>
+            <div class="btn-row">
+                <button onclick="gameApp.setDifficulty('easy')">Easy</button>
+                <button onclick="gameApp.setDifficulty('normal')">Normal</button>
+                <button onclick="gameApp.setDifficulty('hard')">Hard</button>
+            </div>
+            <p id="diff-status" class="status-txt">Waiting for selection...</p>
+        </div>
 
-    <script src="script.js"></script>
+        <div class="menu-group">
+            <h3>2. Select Health</h3>
+            <div class="btn-row">
+                <button onclick="gameApp.setHealth(true)">100 HP</button>
+                <button onclick="gameApp.setHealth(false)">1 Hit Death</button>
+            </div>
+            <p id="hp-status" class="status-txt">Waiting for selection...</p>
+        </div>
+
+        <button id="start-game-btn" disabled onclick="gameApp.startGame()">PLAY GAME</button>
+    </div>
+
+    <div id="game-over-screen" class="hidden">
+        <h1 style="color: red;">GAME OVER</h1>
+        <p style="font-size: 20px;">The Crown was taken!</p>
+        <button onclick="location.reload()" style="margin-top: 20px;">Try Again</button>
+    </div>
+</div>
+
+<audio id="bgm" loop>
+    <source src="pixel-notmadebyme.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+// --- JAVASCRIPT GAME LOGIC ---
+
+// Configuration
+const path = [
+    {x: 0, y: 100}, {x: 200, y: 100}, {x: 200, y: 400}, 
+    {x: 500, y: 400}, {x: 500, y: 200}, {x: 700, y: 200}, {x: 700, y: 500}
+];
+const pathWidth = 50; 
+const crown = { x: 680, y: 480, w: 40, h: 40 };
+
+const enemyTypes = [
+    { color: '#ff7675', hp: 20, speed: 2.5, reward: 15 },    // Red
+    { color: '#ffeaa7', hp: 40, speed: 3.0, reward: 20 },    // Yellow
+    { color: '#55efc4', hp: 90, speed: 2.0, reward: 25 },    // Green
+    { color: '#a29bfe', hp: 150, speed: 3.5, reward: 35 },   // Purple
+    { color: '#d35400', hp: 300, speed: 1.5, reward: 45 },   // Brown
+    { color: '#636e72', hp: 600, speed: 1.8, reward: 60 },   // Grey
+    { color: '#000000', hp: 1200, speed: 1.0, reward: 100 }  // Black
+];
+
+// Game App Namespace to avoid collision
+const gameApp = {
+    canvas: document.getElementById('gameCanvas'),
+    ctx: document.getElementById('gameCanvas').getContext('2d'),
+    
+    state: {
+        running: false,
+        waveActive: false,
+        money: 100,
+        hp: 100,
+        wave: 1,
+        frames: 0,
+        enemies: [],
+        towers: [],
+        projectiles: [],
+        spawnQueue: [],
+        selection: null
+    },
+
+    settings: { diff: null, hpMode: null },
+
+    // --- SETUP ---
+    setDifficulty: function(d) {
+        this.settings.diff = d;
+        document.getElementById('diff-status').innerText = "Selected: " + d.toUpperCase();
+        document.getElementById('diff-status').style.color = "#00b894";
+        this.checkReady();
+    },
+
+    setHealth: function(mode) {
+        this.settings.hpMode = mode;
+        document.getElementById('hp-status').innerText = mode ? "Selected: 100 HP" : "Selected: 1 HIT DEATH";
+        document.getElementById('hp-status').style.color = "#00b894";
+        this.checkReady();
+    },
+
+    checkReady: function() {
+        if (this.settings.diff && this.settings.hpMode !== null) {
+            const btn = document.getElementById('start-game-btn');
+            btn.disabled = false;
+            btn.style.background = "#fdcb6e"; // Gold color to show it's ready
+            btn.style.color = "black";
+        }
+    },
+
+    startGame: function() {
+        // Init State
+        this.state.hp = this.settings.hpMode ? 100 : 1;
+        this.state.money = this.settings.diff === 'easy' ? 250 : (this.settings.diff === 'hard' ? 100 : 150);
+        this.state.running = true;
+
+        // UI
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('stats-bar').classList.remove('hidden');
+        document.getElementById('shop-bar').classList.remove('hidden');
+        this.updateUI();
+
+        // Audio
+        const audio = document.getElementById('bgm');
+        audio.volume = 0.2;
+        audio.play().catch(e => console.log("Audio requires click first"));
+
+        // Loop
+        this.loop();
+    },
+
+    // --- WAVE LOGIC ---
+    startWave: function() {
+        if (this.state.waveActive) return;
+        
+        this.state.waveActive = true;
+        this.state.spawnQueue = [];
+        
+        // Generate Enemies
+        let count = 5 + (this.state.wave * 2);
+        let maxTier = Math.min(Math.ceil(this.state.wave / 2), 6); 
+        
+        for(let i=0; i<count; i++) {
+            let tier = Math.floor(Math.random() * (maxTier + 1));
+            this.state.spawnQueue.push(tier);
+        }
+        this.state.spawnQueue.sort((a,b) => a - b);
+        this.updateUI();
+    },
+
+    // --- INTERACTION ---
+    selectTower: function(type) {
+        if (this.state.waveActive) return;
+        this.state.selection = type;
+        
+        // Visuals
+        document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
+        document.getElementById('shop-' + type).classList.add('selected');
+        document.getElementById('info-msg').innerText = "Click on map to place " + type;
+    },
+
+    handleClick: function(e) {
+        if (!this.state.running) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // 1. Upgrade Check
+        const clickedTower = this.state.towers.find(t => Math.hypot(t.x - x, t.y - y) < 20);
+        if (clickedTower) {
+            clickedTower.upgrade();
+            // Cancel placement if we clicked a tower
+            this.state.selection = null;
+            document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
+            document.getElementById('info-msg').innerText = "Select a unit to build.";
+            return;
+        }
+
+        // 2. Placement Check
+        if (this.state.selection) {
+            if (this.state.waveActive) {
+                alert("Wait for wave to end!");
+                return;
+            }
+
+            let cost = this.state.selection === 'basic' ? 50 : 500;
+            if (this.state.money < cost) {
+                alert("Not enough cash!");
+                return;
+            }
+
+            if (this.checkCollision(x, y)) {
+                alert("Invalid Position (Path, Crown, or Overlap)");
+                return;
+            }
+
+            // Place
+            this.state.towers.push(new Tower(x, y, this.state.selection));
+            this.state.money -= cost;
+            
+            // Reset Selection
+            this.state.selection = null;
+            document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
+            document.getElementById('info-msg').innerText = "Unit placed!";
+            this.updateUI();
+        }
+    },
+
+    checkCollision: function(x, y) {
+        // Bounds
+        if (x < 20 || x > 780 || y < 20 || y > 580) return true;
+
+        // Crown
+        if (x > crown.x - 30 && x < crown.x + crown.w + 30 &&
+            y > crown.y - 30 && y < crown.y + crown.h + 30) return true;
+
+        // Towers
+        if (this.state.towers.some(t => Math.hypot(t.x - x, t.y - y) < 40)) return true;
+
+        // Path
+        for (let i = 0; i < path.length - 1; i++) {
+            let p1 = path[i], p2 = path[i+1];
+            let dist = this.distToSegment(x, y, p1.x, p1.y, p2.x, p2.y);
+            if (dist < (pathWidth / 2) + 15) return true;
+        }
+        return false;
+    },
+
+    distToSegment: function(px, py, x1, y1, x2, y2) {
+        let l2 = (x2 - x1)**2 + (y2 - y1)**2;
+        if (l2 === 0) return Math.hypot(px - x1, py - y1);
+        let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+    },
+
+    // --- GAME LOOP ---
+    update: function() {
+        this.state.frames++;
+
+        // Spawning
+        if (this.state.waveActive && this.state.frames % 60 === 0 && this.state.spawnQueue.length > 0) {
+            let tier = this.state.spawnQueue.shift();
+            this.state.enemies.push(new Enemy(tier));
+        }
+
+        // End Wave Check
+        if (this.state.waveActive && this.state.spawnQueue.length === 0 && this.state.enemies.length === 0) {
+            this.state.waveActive = false;
+            this.state.wave++;
+            this.updateUI();
+        }
+
+        // Entities
+        this.state.enemies.forEach(e => e.update());
+        this.state.enemies = this.state.enemies.filter(e => e.hp > 0);
+        
+        this.state.towers.forEach(t => t.update());
+        
+        this.state.projectiles.forEach(p => p.update());
+        this.state.projectiles = this.state.projectiles.filter(p => !p.hit);
+    },
+
+    draw: function() {
+        // Clear
+        this.ctx.fillStyle = "#222";
+        this.ctx.fillRect(0, 0, 800, 600);
+
+        // Path
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.ctx.lineWidth = pathWidth;
+        this.ctx.strokeStyle = '#333';
+        this.ctx.beginPath();
+        this.ctx.moveTo(path[0].x, path[0].y);
+        path.forEach(p => this.ctx.lineTo(p.x, p.y));
+        this.ctx.stroke();
+
+        // Crown
+        this.ctx.fillStyle = "#f1c40f";
+        this.ctx.fillRect(crown.x, crown.y, crown.w, crown.h);
+        this.ctx.strokeStyle = "white";
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(crown.x, crown.y, crown.w, crown.h);
+
+        // Entities
+        this.state.towers.forEach(t => t.draw(this.ctx));
+        this.state.enemies.forEach(e => e.draw(this.ctx));
+        this.state.projectiles.forEach(p => p.draw(this.ctx));
+    },
+
+    loop: function() {
+        if (!this.state.running) return;
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.loop());
+    },
+
+    updateUI: function() {
+        document.getElementById('hp-display').innerText = this.state.hp;
+        document.getElementById('money-display').innerText = Math.floor(this.state.money);
+        document.getElementById('wave-display').innerText = this.state.wave;
+        
+        const btn = document.getElementById('next-wave-btn');
+        if (this.state.waveActive) {
+            btn.disabled = true;
+            btn.innerText = "⚠️ DEFENDING...";
+            document.getElementById('shop-bar').style.opacity = "0.5";
+        } else {
+            btn.disabled = false;
+            btn.innerText = "⚔️ START WAVE";
+            document.getElementById('shop-bar').style.opacity = "1";
+        }
+    },
+
+    gameOver: function() {
+        this.state.running = false;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+    }
+};
+
+// --- CLASSES ---
+class Enemy {
+    constructor(tier) {
+        let type = enemyTypes[tier];
+        this.tier = tier;
+        this.wpIndex = 0;
+        this.x = path[0].x;
+        this.y = path[0].y;
+        this.speed = type.speed;
+        this.maxHp = type.hp * (gameApp.settings.diff === 'hard' ? 1.5 : 1);
+        this.hp = this.maxHp;
+        this.color = type.color;
+        this.reward = type.reward;
+        this.radius = 12 + tier;
+    }
+    update() {
+        let target = path[this.wpIndex + 1];
+        if (!target) return;
+        let dx = target.x - this.x;
+        let dy = target.y - this.y;
+        let dist = Math.hypot(dx, dy);
+
+        if (dist < this.speed) {
+            this.x = target.x; this.y = target.y;
+            this.wpIndex++;
+            if (this.wpIndex >= path.length - 1) {
+                this.hp = 0; 
+                gameApp.state.hp--;
+                gameApp.updateUI();
+                if (gameApp.state.hp <= 0) gameApp.gameOver();
+            }
+        } else {
+            this.x += (dx/dist)*this.speed;
+            this.y += (dy/dist)*this.speed;
+        }
+    }
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke();
+    }
+}
+
+class Tower {
+    constructor(x, y, type) {
+        this.x = x; this.y = y; this.type = type;
+        this.level = 1; this.timer = 0;
+        if (type === 'basic') {
+            this.range = 130; this.dmg = 10; this.cooldown = 40; this.color = '#0984e3';
+        } else {
+            this.range = 300; this.dmg = 80; this.cooldown = 120; this.color = '#fdcb6e';
+        }
+    }
+    upgrade() {
+        if (gameApp.state.waveActive) return;
+        let cost = this.type === 'basic' ? 100 : 500;
+        if (gameApp.state.money >= cost) {
+            gameApp.state.money -= cost;
+            this.level++;
+            this.dmg *= 1.4;
+            this.range += 10;
+            if(this.cooldown > 10) this.cooldown *= 0.9;
+            gameApp.updateUI();
+        }
+    }
+    update() {
+        if (this.timer > 0) this.timer--;
+        else {
+            let target = gameApp.state.enemies.find(e => Math.hypot(e.x - this.x, e.y - this.y) < this.range);
+            if (target) {
+                gameApp.state.projectiles.push(new Projectile(this.x, this.y, target, this.dmg, this.type));
+                this.timer = this.cooldown;
+            }
+        }
+    }
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - 15, this.y - 15, 30, 30);
+        ctx.fillStyle = "white"; ctx.font = "12px Arial";
+        ctx.fillText(this.level, this.x - 4, this.y + 5);
+    }
+}
+
+class Projectile {
+    constructor(x, y, target, dmg, type) {
+        this.x = x; this.y = y; this.target = target;
+        this.damage = dmg; this.type = type;
+        this.speed = type === 'sniper' ? 15 : 7;
+        this.hit = false;
+    }
+    update() {
+        if (!gameApp.state.enemies.includes(this.target)) { this.hit = true; return; }
+        let dx = this.target.x - this.x;
+        let dy = this.target.y - this.y;
+        let dist = Math.hypot(dx, dy);
+        
+        if (dist < this.speed) {
+            this.target.hp -= this.damage;
+            if (this.target.hp <= 0) gameApp.state.money += this.target.reward;
+            this.hit = true;
+        } else {
+            this.x += (dx/dist)*this.speed;
+            this.y += (dy/dist)*this.speed;
+        }
+    }
+    draw(ctx) {
+        ctx.fillStyle = this.type === 'sniper' ? 'yellow' : 'cyan';
+        let r = this.type === 'sniper' ? 6 : 3;
+        ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+// --- EVENTS ---
+document.getElementById('next-wave-btn').addEventListener('click', () => gameApp.startWave());
+document.getElementById('gameCanvas').addEventListener('mousedown', (e) => gameApp.handleClick(e));
+
+</script>
 </body>
 </html>
