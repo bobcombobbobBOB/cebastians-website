@@ -195,15 +195,14 @@ const pathWidth = 50;
 const crown = { x: 680, y: 480, w: 40, h: 40 };
 
 const enemyTypes = [
-    { color: '#ff7675', hp: 20, speed: 2.5, reward: 15 },    // Red
-    { color: '#ffeaa7', hp: 40, speed: 3.0, reward: 20 },    // Yellow
-    { color: '#55efc4', hp: 90, speed: 2.0, reward: 25 },    // Green
-    { color: '#a29bfe', hp: 150, speed: 3.5, reward: 35 },   // Purple
-    { color: '#d35400', hp: 300, speed: 1.5, reward: 45 },   // Brown
-    { color: '#636e72', hp: 600, speed: 1.8, reward: 60 },   // Grey
-    { color: '#000000', hp: 1200, speed: 1.0, reward: 100 }  // Black
+    { color: '#ff7675', hp: 20, speed: 2.5, reward: 15, damage: 1 },    // Red (1 Dmg)
+    { color: '#ffeaa7', hp: 40, speed: 3.0, reward: 20, damage: 2 },    // Yellow
+    { color: '#55efc4', hp: 90, speed: 2.0, reward: 25, damage: 5 },    // Green
+    { color: '#a29bfe', hp: 150, speed: 3.5, reward: 35, damage: 10 },  // Purple
+    { color: '#d35400', hp: 300, speed: 1.5, reward: 45, damage: 15 },  // Brown
+    { color: '#636e72', hp: 600, speed: 1.8, reward: 60, damage: 20 },  // Grey
+    { color: '#000000', hp: 1200, speed: 1.0, reward: 100, damage: 30 } // Black (30 Dmg!)
 ];
-
 // Game App Namespace to avoid collision
 const gameApp = {
     canvas: document.getElementById('gameCanvas'),
@@ -474,6 +473,7 @@ class Enemy {
         this.hp = this.maxHp;
         this.color = type.color;
         this.reward = type.reward;
+        this.damage = type.damage;
         this.radius = 12 + tier;
     }
     update() {
@@ -488,7 +488,7 @@ class Enemy {
             this.wpIndex++;
             if (this.wpIndex >= path.length - 1) {
                 this.hp = 0; 
-                gameApp.state.hp--;
+                gameApp.state.hp -= this.damage;
                 gameApp.updateUI();
                 if (gameApp.state.hp <= 0) gameApp.gameOver();
             }
