@@ -10,14 +10,14 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 #game { display:grid; grid-template-columns: repeat(18, 1fr); grid-template-rows: repeat(18, 1fr); gap:2px; width:90vmin; height:90vmin; }
 .tile { background:#444; width:100%; height:100%; transition: background 0.3s, transform 0.4s, opacity 0.4s; }
 
-/* Safe tile styling */
-.safe-zone { background: #222 !important; border: 1px solid #444; }
+/* Visual marker for the safe 9,9 tile */
+.safe-zone { background: #222 !important; border: 1px solid #333; }
 
 .player { background:#0f0 !important; z-index: 2; }
 .warning { background:red !important; }
 .falling { transform:translateY(50px); opacity:0; }
 
-#death-screen { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:5; }
+#death-screen { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:10; }
 #death-screen h2, #death-screen p { margin:5px; text-align:center; }
 #play-again { margin-top:10px; padding:6px 12px; cursor:pointer; border:none; border-radius:5px; }
 
@@ -37,7 +37,7 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 <body>
 
 <div id="top-bar">
-    <div>Score: <span id="score-val">0</span></div>
+    <div>(V1.02) Score: <span id="score-val">0</span></div>
     <div class="credits">Song: John Bartmann</div>
     <button id="music-btn" onclick="toggleMusic()">🎵 Music: OFF</button>
 </div>
@@ -68,7 +68,7 @@ const deathScore = document.getElementById("death-score");
 const scoreSpan = document.getElementById("score-val");
 
 let grid = [];
-let player = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
+let player = { x: 9, y: 9 }; // SET TO 9,9
 let dropLoop;
 let score = 0;
 let paused = false;
@@ -86,7 +86,7 @@ function toggleMusic() {
         btn.style.background = "#444";
         isMusicOn = false;
     } else {
-        bgm.play().catch(e => console.log("Error playing:", e));
+        bgm.play().catch(e => console.log("Audio load error:", e));
         btn.innerText = "🎵 Music: ON";
         btn.style.background = "#00b894"; 
         isMusicOn = true;
@@ -101,7 +101,7 @@ function createGrid() {
         for(let x=0;x<SIZE;x++){
             const tile=document.createElement("div");
             tile.classList.add("tile");
-            // Highlight the safe spawn tile
+            // Mark the center safe tile
             if(x === 9 && y === 9) tile.classList.add("safe-zone");
             game.appendChild(tile);
             row.push({element:tile, exists:true, dropping:false});
@@ -123,7 +123,7 @@ function getRandomExistingTile(){
     let existing=[];
     for(let y=0;y<SIZE;y++){
         for(let x=0;x<SIZE;x++){
-            // RULE: Never pick the center tile (9,9)
+            // RULE: Skip 9,9 so it never falls
             if (x === 9 && y === 9) continue;
             
             if(grid[y][x].exists && !grid[y][x].dropping) existing.push({x,y});
@@ -160,17 +160,14 @@ function triggerRandomDrop(){
 }
 
 function checkWinCondition() {
-    // Count how many tiles still exist
-    let remaining = 0;
+    let count = 0;
     for(let y=0; y<SIZE; y++) {
         for(let x=0; x<SIZE; x++) {
-            if(grid[y][x].exists) remaining++;
+            if(grid[y][x].exists) count++;
         }
     }
-    // If only the safe tile remains, you win!
-    if (remaining === 1) {
-        endGame(true);
-    }
+    // Only the center tile left? Win!
+    if (count === 1) endGame(true);
 }
 
 function move(dx,dy){
@@ -192,11 +189,11 @@ function endGame(isWin){
     deathScreen.style.display = "flex";
 }
 
-function startGameLoop(){
+function startGameLoop() {
     paused=false;
     score=0;
     scoreSpan.textContent = score;
-    player={ x: 9, y: 9 }; // Center spawn
+    player = { x: 9, y: 9 }; // ENSURE SPAWN AT 9,9
     createGrid();
     drawPlayer();
     dropLoop = setInterval(triggerRandomDrop, DROP_INTERVAL);
