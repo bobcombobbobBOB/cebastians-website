@@ -1,12 +1,13 @@
 body {
-    background-color: #111;
+    background-color: #000;
     color: white;
-    font-family: 'Courier New', monospace;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
+    overflow: hidden;
     user-select: none;
 }
 
@@ -14,70 +15,101 @@ body {
     position: relative;
     width: 800px;
     height: 600px;
-    border: 4px solid #555;
-    background-color: #2a2a2a;
+    background-color: #222;
+    border: 2px solid #555;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
 }
 
-canvas { display: block; }
+canvas { display: block; cursor: crosshair; }
 
+/* UI Layering */
 #ui-layer {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    pointer-events: none;
+    pointer-events: none; /* Let clicks pass to canvas */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
+/* Stats Bar */
 #stats-bar {
-    background: rgba(0,0,0,0.8);
-    padding: 10px;
+    background: rgba(0, 0, 0, 0.85);
+    padding: 10px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     pointer-events: auto;
+    border-bottom: 2px solid #444;
 }
 
+.stat-box { font-size: 18px; font-weight: bold; }
+
+/* Buttons */
+button {
+    background: #00b894;
+    border: none;
+    padding: 10px 20px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+
+button:hover { background: #00cec9; }
+
+/* Disabled Button State */
+button:disabled, button.disabled {
+    background: #636e72;
+    color: #b2bec3;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Shop Bar */
 #shop-bar {
-    position: absolute;
-    bottom: 0; width: 100%;
-    background: rgba(0,0,0,0.9);
+    background: rgba(0, 0, 0, 0.9);
     padding: 10px;
     display: flex;
-    gap: 10px;
+    gap: 15px;
     align-items: center;
     pointer-events: auto;
-    box-sizing: border-box;
+    border-top: 2px solid #444;
 }
 
 .shop-item {
-    border: 2px solid #777;
-    padding: 10px;
+    border: 2px solid #555;
     background: #333;
+    padding: 8px;
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     cursor: pointer;
-    text-align: center;
-    min-width: 100px;
+    border-radius: 5px;
+    transition: 0.2s;
 }
 
-.shop-item:hover { background: #444; border-color: white; }
-.shop-item.selected { border-color: #0f0; background: #222; }
+.shop-item:hover { background: #444; border-color: #aaa; }
+.shop-item.selected { border-color: #00b894; background: #2d3436; box-shadow: 0 0 10px #00b894; }
 
-/* When waves are active, dim the shop */
-.shop-disabled { opacity: 0.5; pointer-events: none; }
+/* Shop Icons */
+.icon { width: 20px; height: 20px; margin-bottom: 5px; }
+.icon.blue { background: #0984e3; }
+.icon.yellow { background: #fdcb6e; }
 
-button {
-    background: #ffcc00; border: none;
-    padding: 8px 16px; font-weight: bold;
-    cursor: pointer; font-family: inherit;
-}
-button:disabled { background: #555; cursor: not-allowed; }
-button:hover:not(:disabled) { background: #ffdb4d; }
-
+/* Screens */
 #start-screen, #game-over-screen {
     position: absolute; top: 0; left: 0;
     width: 100%; height: 100%;
-    background: rgba(0,0,0,0.95);
+    background: rgba(10, 10, 10, 0.98);
     display: flex; flex-direction: column;
     justify-content: center; align-items: center;
-    z-index: 10; pointer-events: auto;
+    z-index: 50; pointer-events: auto;
 }
 
+.menu-group { margin-bottom: 20px; text-align: center; }
+.btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 5px; }
 .hidden { display: none !important; }
