@@ -117,6 +117,20 @@
         .status-txt { color: #aaa; margin-top: 5px; font-size: 14px; }
         
         .hidden { display: none !important; }
+
+/* Music Button Style */
+        #music-btn {
+            position: absolute;
+            top: 80px; /* Below the stats bar */
+            left: 10px;
+            background: #444;
+            color: white;
+            padding: 8px 12px;
+            font-size: 12px;
+            border: 1px solid #666;
+            z-index: 100;
+        }
+        
     </style>
 </head>
 <body>
@@ -125,6 +139,7 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <div id="ui-layer">
+        <button id="music-btn" onclick="toggleMusic()" style="pointer-events: auto;">🎵 Music: OFF</button>
         <div id="stats-bar" class="hidden">
             <div class="stat-box">❤️ HP: <span id="hp-display" class="highlight">100</span></div>
             <div class="stat-box">💰 Cash: $<span id="money-display" class="highlight">100</span></div>
@@ -259,12 +274,7 @@ const gameApp = {
         document.getElementById('stats-bar').classList.remove('hidden');
         document.getElementById('shop-bar').classList.remove('hidden');
         this.updateUI();
-
-        // Audio
-        const audio = document.getElementById('bgm');
-        audio.volume = 0.2;
-        audio.play().catch(e => console.log("Audio requires click first"));
-
+        
         // Loop
         this.loop();
     },
@@ -579,6 +589,27 @@ class Projectile {
 document.getElementById('next-wave-btn').addEventListener('click', () => gameApp.startWave());
 document.getElementById('gameCanvas').addEventListener('mousedown', (e) => gameApp.handleClick(e));
 
+// --- MUSIC TOGGLE LOGIC ---
+let isMusicOn = false;
+const bgm = document.getElementById('bgm');
+bgm.volume = 0.2; // Set volume low
+
+function toggleMusic() {
+    const btn = document.getElementById('music-btn');
+    
+    if (isMusicOn) {
+        bgm.pause();
+        btn.innerText = "🎵 Music: OFF";
+        btn.style.background = "#444";
+        isMusicOn = false;
+    } else {
+        bgm.play().catch(e => console.log("Audio needs interaction first"));
+        btn.innerText = "🎵 Music: ON";
+        btn.style.background = "#00b894"; // Green when on
+        isMusicOn = true;
+    }
+}
+    
 </script>
 </body>
 </html>
