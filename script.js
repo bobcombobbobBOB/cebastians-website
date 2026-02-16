@@ -1,90 +1,97 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- Game State ---
-let gameState = {
-    money: 100,
-    lives: 100,
-    wave: 1,
-    difficulty: 'normal', // easy, normal, hard
-    gameActive: false,
-    enemies: [],
-    towers: [],
-    projectiles: [],
-    waveInProgress: false,
-    frames: 0
-};
-
+// --- Game Configuration ---
 const path = [
     {x: 0, y: 100}, {x: 200, y: 100}, {x: 200, y: 400}, 
     {x: 500, y: 400}, {x: 500, y: 200}, {x: 700, y: 200}, {x: 700, y: 500}
 ];
-const crownPos = {x: 700, y: 500};
+const crownRect = { x: 680, y: 480, w: 40, h: 40 }; // Yellow Box Crown
+const pathWidth = 40; 
 
-// --- Settings ---
-let difficultyMultipliers = {
-    'easy': { hp: 0.7, speed: 0.8, reward: 1.5 },
-    'normal': { hp: 1.0, speed: 1.0, reward: 1.0 },
-    'hard': { hp: 1.5, speed: 1.3, reward: 0.8 }
+// 7 Enemy Levels
+const enemyTypes = [
+    { color: '#FF0000', hp: 20, speed: 2, reward: 10 },    // 1: Red
+    { color: '#FFFF00', hp: 40, speed: 3, reward: 15 },    // 2: Yellow
+    { color: '#00FF00', hp: 80, speed: 1.5, reward: 20 },  // 3: Green
+    { color: '#800080', hp: 150, speed: 2.5, reward: 30 }, // 4: Purple
+    { color: '#8B4513', hp: 300, speed: 1, reward: 40 },   // 5: Brown
+    { color: '#808080', hp: 500, speed: 1.2, reward: 50 }, // 6: Grey
+    { color: '#000000', hp: 1000, speed: 0.8, reward: 100 }// 7: Black
+];
+
+let gameState = {
+    money: 100,
+    lives: 100,
+    wave: 1,
+    gameActive: false,
+    waveActive: false, // Is a wave currently running?
+    spawnQueue: [],    // List of enemies waiting to spawn this wave
+    enemies: [],
+    towers: [],
+    projectiles: [],
+    frames: 0,
+    selectedTowerType: null // 'basic' or 'sniper'
 };
+
+// --- Setup ---
 let selectedDiff = null;
 let healthModeSet = null;
 
-// --- Setup Functions ---
 function setDifficulty(diff) {
     selectedDiff = diff;
     document.getElementById('selected-diff').innerText = "Selected: " + diff.toUpperCase();
-    checkStartReady();
+    checkStart();
 }
-
-function setHealthMode(hasHealth) {
-    healthModeSet = hasHealth;
-    document.getElementById('selected-health').innerText = hasHealth ? "Selected: 100 HP" : "Selected: 1 HIT DEATH";
-    checkStartReady();
+function setHealthMode(mode) {
+    healthModeSet = mode;
+    document.getElementById('selected-health').innerText = mode ? "Selected: 100 HP" : "Selected: 1 HIT DEATH";
+    checkStart();
 }
-
-function checkStartReady() {
-    if (selectedDiff && healthModeSet !== null) {
-        document.getElementById('start-btn').disabled = false;
-    }
+function checkStart() {
+    if(selectedDiff && healthModeSet !== null) document.getElementById('start-btn').disabled = false;
 }
 
 function startGame() {
-    gameState.difficulty = selectedDiff;
     gameState.lives = healthModeSet ? 100 : 1;
-    gameState.money = selectedDiff === 'easy' ? 150 : 100;
-    
+    gameState.money = selectedDiff === 'easy' ? 250 : (selectedDiff === 'hard' ? 100 : 150);
+    gameState.gameActive = true;
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('stats-bar').classList.remove('hidden');
     document.getElementById('shop-bar').classList.remove('hidden');
-    gameState.gameActive = true;
     
-    // Attempt to play sound
-    const audio = document.getElementById('bgm');
-    audio.volume = 0.3;
-    audio.play().catch(e => console.log("Audio play failed (user interaction needed)"));
-
+    // Try play audio
+    document.getElementById('bgm').volume = 0.2;
+    document.getElementById('bgm').play().catch(() => {});
+    
     updateUI();
     gameLoop();
 }
 
 // --- Classes ---
 class Enemy {
-    constructor(wave) {
-        let mult = difficultyMultipliers[gameState.difficulty];
+    constructor(levelIndex) {
+        // Clamp level index 0-6
+        let idx = Math.min(levelIndex, 6);
+        let type = enemyTypes[idx];
+        
+        // Difficulty scaling multiplier
+        let diffMult = selectedDiff === 'hard' ? 1.5 : (selectedDiff === 'easy' ? 0.7 : 1.0);
+
         this.wpIndex = 0;
         this.x = path[0].x;
         this.y = path[0].y;
-        this.radius = 15;
-        this.speed = (1 + (wave * 0.1)) * mult.speed;
-        this.hp = (20 + (wave * 10)) * mult.hp;
+        this.color = type.color;
+        this.radius = 12 + idx; // Harder enemies are slightly bigger
+        this.speed = type.speed; 
+        this.hp = type.hp * diffMult;
         this.maxHp = this.hp;
-        this.reward = Math.floor((10 + wave) * mult.reward);
+        this.reward = type.reward;
     }
 
     update() {
         let target = path[this.wpIndex + 1];
-        if(!target) return; // At end
+        if(!target) return; 
 
         let dx = target.x - this.x;
         let dy = target.y - this.y;
@@ -94,8 +101,9 @@ class Enemy {
             this.x = target.x;
             this.y = target.y;
             this.wpIndex++;
+            // Reached Crown
             if (this.wpIndex >= path.length - 1) {
-                this.hp = 0; // Remove enemy
+                this.hp = 0;
                 gameState.lives--;
                 if(gameState.lives <= 0) endGame();
             }
@@ -106,36 +114,46 @@ class Enemy {
     }
 
     draw() {
-        ctx.fillStyle = 'red';
+        ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        // HP Bar
-        ctx.fillStyle = 'black';
-        ctx.fillRect(this.x - 15, this.y - 25, 30, 5);
-        ctx.fillStyle = '#0f0';
-        ctx.fillRect(this.x - 15, this.y - 25, 30 * (this.hp / this.maxHp), 5);
+        ctx.strokeStyle = 'white';
+        ctx.stroke(); // Outline to see black units
     }
 }
 
 class Tower {
-    constructor(x, y) {
+    constructor(x, y, type) {
         this.x = x;
         this.y = y;
-        this.range = 100;
-        this.damage = 10;
-        this.cooldown = 0;
-        this.maxCooldown = 30; // Frames
+        this.type = type;
         this.level = 1;
+        this.cooldown = 0;
+
+        if (type === 'basic') {
+            this.range = 120;
+            this.damage = 15;
+            this.maxCooldown = 40;
+            this.color = 'blue';
+            this.size = 20;
+        } else if (type === 'sniper') {
+            this.range = 300;
+            this.damage = 100;
+            this.maxCooldown = 120; // Slow fire
+            this.color = 'yellow';
+            this.size = 25;
+        }
     }
 
     upgrade() {
-        if (gameState.money >= 100) {
-            gameState.money -= 100;
+        let cost = this.type === 'sniper' ? 500 : 100; // Expensive upgrade for sniper
+        if (gameState.money >= cost) {
+            gameState.money -= cost;
             this.level++;
-            this.damage += 10;
-            this.range += 15;
-            this.maxCooldown = Math.max(5, this.maxCooldown - 2);
+            this.damage *= 1.5;
+            // Upgrade fire rate
+            if(this.maxCooldown > 10) this.maxCooldown *= 0.85; 
             updateUI();
         }
     }
@@ -143,52 +161,51 @@ class Tower {
     update() {
         if (this.cooldown > 0) this.cooldown--;
         else {
-            // Find target
-            const target = gameState.enemies.find(e => {
-                return Math.hypot(e.x - this.x, e.y - this.y) <= this.range;
-            });
+            const target = gameState.enemies.find(e => Math.hypot(e.x - this.x, e.y - this.y) <= this.range);
             if (target) {
-                gameState.projectiles.push(new Projectile(this.x, this.y, target, this.damage));
+                gameState.projectiles.push(new Projectile(this.x, this.y, target, this.damage, this.type));
                 this.cooldown = this.maxCooldown;
             }
         }
     }
 
     draw() {
-        ctx.fillStyle = 'blue';
-        ctx.fillRect(this.x - 15, this.y - 15, 30, 30);
-        // Draw Level
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
         ctx.fillStyle = 'white';
         ctx.font = '10px Arial';
-        ctx.fillText("Lvl " + this.level, this.x - 12, this.y + 4);
+        ctx.fillText("Lvl " + this.level, this.x - 10, this.y - 15);
     }
 }
 
 class Projectile {
-    constructor(x, y, target, dmg) {
+    constructor(x, y, target, dmg, type) {
         this.x = x;
         this.y = y;
         this.target = target;
         this.damage = dmg;
-        this.speed = 10;
         this.hit = false;
+        
+        if (type === 'sniper') {
+            this.speed = 15;
+            this.radius = 8;
+            this.color = 'yellow';
+        } else {
+            this.speed = 8;
+            this.radius = 4;
+            this.color = 'cyan';
+        }
     }
 
     update() {
-        if (!gameState.enemies.includes(this.target)) {
-            this.hit = true; // Target died before hit
-            return;
-        }
+        if (!gameState.enemies.includes(this.target)) { this.hit = true; return; }
         let dx = this.target.x - this.x;
         let dy = this.target.y - this.y;
         let dist = Math.hypot(dx, dy);
 
         if (dist < this.speed) {
             this.target.hp -= this.damage;
-            if (this.target.hp <= 0) {
-                gameState.money += this.target.reward;
-                // Remove enemy (will be filtered in main loop)
-            }
+            if (this.target.hp <= 0) gameState.money += this.target.reward;
             this.hit = true;
         } else {
             this.x += (dx / dist) * this.speed;
@@ -197,32 +214,71 @@ class Projectile {
     }
 
     draw() {
-        ctx.fillStyle = 'yellow';
+        ctx.fillStyle = this.color;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
     }
 }
 
-// --- Core Logic ---
+// --- Logic ---
+function selectTower(type) {
+    if (gameState.waveActive) return; // Cannot select during wave
+    gameState.selectedTowerType = type;
+    
+    // Highlight UI
+    document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
+    if(type === 'basic') document.querySelectorAll('.shop-item')[0].classList.add('selected');
+    if(type === 'sniper') document.querySelectorAll('.shop-item')[1].classList.add('selected');
+}
+
+function startNextWave() {
+    if (gameState.waveActive) return;
+    
+    gameState.waveActive = true;
+    gameState.spawnQueue = [];
+    
+    // Generate Wave Enemies
+    // Logic: Wave 1 = Level 0 enemies. Wave 10 = Mix of level 0,1,2 etc.
+    let count = 5 + Math.floor(gameState.wave * 1.5);
+    for(let i=0; i<count; i++) {
+        // Simple logic: higher wave allows higher level enemy types
+        let maxEnemyLevel = Math.min(Math.floor(gameState.wave / 3), 6); 
+        let enemyLvl = Math.floor(Math.random() * (maxEnemyLevel + 1));
+        gameState.spawnQueue.push(enemyLvl);
+    }
+    
+    // Sort so weaker ones come first usually, or random
+    gameState.spawnQueue.sort((a,b) => a - b);
+    
+    updateUI();
+    document.getElementById('shop-bar').classList.add('shop-disabled');
+}
+
 function update() {
-    if (!gameState.gameActive || gameState.lives <= 0) return;
+    if (!gameState.gameActive) return;
     gameState.frames++;
 
-    // Spawn Logic (Simple)
-    if (gameState.waveInProgress && gameState.frames % 60 === 0) {
-        if (Math.random() > 0.1) gameState.enemies.push(new Enemy(gameState.wave));
+    // Spawning
+    if (gameState.waveActive && gameState.spawnQueue.length > 0 && gameState.frames % 60 === 0) {
+        let lvl = gameState.spawnQueue.shift();
+        gameState.enemies.push(new Enemy(lvl));
     }
 
-    // Entities
+    // Check Wave End
+    if (gameState.waveActive && gameState.spawnQueue.length === 0 && gameState.enemies.length === 0) {
+        gameState.waveActive = false;
+        gameState.wave++;
+        document.getElementById('shop-bar').classList.remove('shop-disabled');
+        updateUI();
+    }
+
     gameState.enemies.forEach(e => e.update());
     gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
-    
     gameState.towers.forEach(t => t.update());
-    
     gameState.projectiles.forEach(p => p.update());
     gameState.projectiles = gameState.projectiles.filter(p => !p.hit);
-
+    
     updateUI();
 }
 
@@ -230,17 +286,21 @@ function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw Path
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 40;
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = pathWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
     ctx.moveTo(path[0].x, path[0].y);
     path.forEach(p => ctx.lineTo(p.x, p.y));
     ctx.stroke();
 
-    // Draw Crown
+    // Draw Crown (Yellow Box)
     ctx.fillStyle = 'gold';
-    ctx.font = '40px Arial';
-    ctx.fillText("👑", crownPos.x - 20, crownPos.y + 10);
+    ctx.fillRect(crownRect.x, crownRect.y, crownRect.w, crownRect.h);
+    ctx.strokeStyle = 'orange';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(crownRect.x, crownRect.y, crownRect.w, crownRect.h);
 
     gameState.towers.forEach(t => t.draw());
     gameState.enemies.forEach(e => e.draw());
@@ -256,42 +316,110 @@ function gameLoop() {
 function endGame() {
     gameState.gameActive = false;
     document.getElementById('game-over-screen').classList.remove('hidden');
-    document.getElementById('final-wave').innerText = gameState.wave;
 }
 
 function updateUI() {
     document.getElementById('hp-display').innerText = gameState.lives;
-    document.getElementById('money-display').innerText = gameState.money;
+    document.getElementById('money-display').innerText = Math.floor(gameState.money);
     document.getElementById('wave-display').innerText = gameState.wave;
+    
+    const btn = document.getElementById('next-wave-btn');
+    const status = document.getElementById('wave-status');
+    
+    if (gameState.waveActive) {
+        btn.disabled = true;
+        status.innerText = "ATTACKING!";
+        status.style.color = "red";
+    } else {
+        btn.disabled = false;
+        status.innerText = "SAFE";
+        status.style.color = "lime";
+    }
 }
 
-// --- Interaction ---
-document.getElementById('next-wave-btn').addEventListener('click', () => {
-    gameState.waveInProgress = true;
-    gameState.wave++;
-});
+// --- Interaction & Collision ---
+
+// Check if a point collides with the path (rectangle segments)
+function isMsgOnPath(x, y, buffer) {
+    for (let i = 0; i < path.length - 1; i++) {
+        let p1 = path[i];
+        let p2 = path[i+1];
+        
+        // Define bounding box of segment
+        let minX = Math.min(p1.x, p2.x) - (pathWidth/2 + buffer);
+        let maxX = Math.max(p1.x, p2.x) + (pathWidth/2 + buffer);
+        let minY = Math.min(p1.y, p2.y) - (pathWidth/2 + buffer);
+        let maxY = Math.max(p1.y, p2.y) + (pathWidth/2 + buffer);
+
+        if (x >= minX && x <= maxX && y >= minY && y <= maxY) return true;
+    }
+    return false;
+}
+
+// Check Crown Collision
+function isMsgOnCrown(x, y) {
+    return (x > crownRect.x - 20 && x < crownRect.x + crownRect.w + 20 &&
+            y > crownRect.y - 20 && y < crownRect.y + crownRect.h + 20);
+}
+
+document.getElementById('next-wave-btn').addEventListener('click', startNextWave);
 
 canvas.addEventListener('mousedown', (e) => {
     if (!gameState.gameActive) return;
+    
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Check if clicked on existing tower (Upgrade)
-    const clickedTower = gameState.towers.find(t => Math.hypot(t.x - x, t.y - y) < 20);
+    // 1. Check if clicking existing tower (Upgrade)
+    // Only allow upgrades if NOT in placement mode, OR if we click on a tower while in placement mode
+    const clickedTower = gameState.towers.find(t => Math.hypot(t.x - x, t.y - y) < 25);
+    
     if (clickedTower) {
         clickedTower.upgrade();
+        gameState.selectedTowerType = null; // Cancel build mode if we clicked a tower
+        document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
         return;
     }
 
-    // Place new Tower
-    if (gameState.money >= 50) {
-        // Simple collision check to not place on path
-        let onPath = false;
-        // In a real game, you'd check polygon collision, here we just check distance to waypoints roughly
-        // or just allow it anywhere for this demo.
+    // 2. Try Place Tower
+    if (gameState.selectedTowerType) {
+        if (gameState.waveActive) {
+            alert("Cannot build during waves!");
+            return;
+        }
+
+        let cost = gameState.selectedTowerType === 'basic' ? 50 : 500;
         
-        gameState.towers.push(new Tower(x, y));
-        gameState.money -= 50;
+        if (gameState.money < cost) {
+            alert("Not enough money!");
+            return;
+        }
+
+        // Collision Checks
+        if (isMsgOnPath(x, y, 10)) {
+            alert("Cannot build on the path!");
+            return;
+        }
+        if (isMsgOnCrown(x, y)) {
+            alert("Cannot build on the Crown!");
+            return;
+        }
+
+        // Check distance to other towers
+        let tooClose = gameState.towers.some(t => Math.hypot(t.x - x, t.y - y) < 45); // 45px buffer
+        if (tooClose) {
+            alert("Too close to another tower!");
+            return;
+        }
+
+        // Place it
+        gameState.towers.push(new Tower(x, y, gameState.selectedTowerType));
+        gameState.money -= cost;
+        
+        // Deselect
+        gameState.selectedTowerType = null;
+        document.querySelectorAll('.shop-item').forEach(el => el.classList.remove('selected'));
+        updateUI();
     }
 });
