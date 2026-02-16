@@ -24,14 +24,14 @@
     </div>
 
     <script type="module">
-        // Using Firebase CDN (No external files needed on your PC)
+
         import { initializeApp } from "https://www.gstatic.com";
         import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com";
-
-        // REPLACE THIS with your specific Firebase Config from the console
+        
         const firebaseConfig = {
           apiKey: "AIzaSyAcNT6uHpzia23O72_zyiSUV8Yv2tbx2ko",
           authDomain: "text-textfile.firebaseapp.com",
+          databaseURL: "https://text-textfile-default-rtdb.firebaseio.com/", 
           projectId: "text-textfile",
           storageBucket: "text-textfile.firebasestorage.app",
           messagingSenderId: "44439473557",
@@ -39,12 +39,13 @@
           measurementId: "G-J2XNT457NV"
         };
 
+
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const textRef = ref(db, 'global_graffiti');
         const textArea = document.getElementById('sharedText');
 
-        // Live Listener: Automatically updates when ANYONE saves
+
         onValue(textRef, (snapshot) => {
             const data = snapshot.val();
             if (data !== textArea.value) {
@@ -54,17 +55,17 @@
             }
         });
 
-        // Upload Button
+
         document.getElementById('uploadBtn').addEventListener('click', () => {
             set(textRef, textArea.value).then(() => alert("Sent to cloud!"));
         });
 
-        // Manual Reload
+
         document.getElementById('reloadBtn').addEventListener('click', () => {
             get(textRef).then((snapshot) => { textArea.value = snapshot.val() || ""; });
         });
 
-        // Nuke Button
+
         document.getElementById('nukeBtn').addEventListener('click', () => {
             if(confirm("Delete for EVERYONE?")) { set(textRef, ""); }
         });
