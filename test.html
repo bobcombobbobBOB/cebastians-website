@@ -10,7 +10,8 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 #game { display:grid; grid-template-columns: repeat(18, 1fr); grid-template-rows: repeat(18, 1fr); gap:2px; width:90vmin; height:90vmin; }
 .tile { background:#444; width:100%; height:100%; transition: background 0.3s, transform 0.4s, opacity 0.4s; }
 
-/* Removed .safe-zone style so everything looks identical */
+/* The flash effect for the secret button */
+.flash-safe { background: #222 !important; transition: background 0.1s; }
 
 .player { background:#0f0 !important; z-index: 2; }
 .warning { background:red !important; }
@@ -30,14 +31,26 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
     font-size: 14px;
     border-radius: 4px;
 }
-.credits { font-size: 0.6em; color: #888; margin-left: 10px; }
+
+/* Secret Button Styling */
+#secret-btn {
+    margin-left: 15px;
+    font-size: 0.6em;
+    color: #888;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+}
+#secret-btn:hover { color: #aaa; }
 </style>
 </head>
 <body>
 
 <div id="top-bar">
-    <div>(V:1.03) Score: <span id="score-val">0</span></div>
-    <div class="credits">Song: John Bartmann</div>
+    <div>(V:1.04) Score: <span id="score-val">0</span></div>
+    <button id="secret-btn" onclick="triggerSecret()">made by cebastian</button>
     <button id="music-btn" onclick="toggleMusic()">🎵 Music: OFF</button>
 </div>
 
@@ -71,6 +84,26 @@ let player = { x: 9, y: 9 };
 let dropLoop;
 let score = 0;
 let paused = false;
+let safePos = null; // Start with NO safe position
+
+// --- SECRET CHEAT LOGIC ---
+function triggerSecret() {
+    if (safePos === null) {
+        // Create a new random safe position
+        safePos = {
+            x: Math.floor(Math.random() * SIZE),
+            y: Math.floor(Math.random() * SIZE)
+        };
+        alert("New Safe Zone at: " + safePos.x + ", " + safePos.y);
+    } else {
+        // Flash the existing safe tile
+        const safeTile = grid[safePos.y][safePos.x].element;
+        safeTile.classList.add("flash-safe");
+        setTimeout(() => {
+            safeTile.classList.remove("flash-safe");
+        }, 500);
+    }
+}
 
 // --- MUSIC LOGIC ---
 let isMusicOn = false;
@@ -100,7 +133,6 @@ function createGrid() {
         for(let x=0;x<SIZE;x++){
             const tile=document.createElement("div");
             tile.classList.add("tile");
-            // Removed the line that added the 'safe-zone' class
             game.appendChild(tile);
             row.push({element:tile, exists:true, dropping:false});
         }
@@ -121,13 +153,14 @@ function getRandomExistingTile(){
     let existing=[];
     for(let y=0;y<SIZE;y++){
         for(let x=0;x<SIZE;x++){
-            // THE LOGIC IS STILL HERE: Skip 9,9 so it never falls
-            if (x === 9 && y === 9) continue;
+            // If cheat is active, skip the safe position
+            if (safePos && x === safePos.x && y === safePos.y) continue;
             
             if(grid[y][x].exists && !grid[y][x].dropping) existing.push({x,y});
         }
     }
-    return existing.length === 0 ? null : existing[Math.floor(Math.random()*existing.length)];
+    if (existing.length === 0) return null;
+    return existing[Math.floor(Math.random()*existing.length)];
 }
 
 function triggerRandomDrop(){
@@ -209,5 +242,7 @@ document.getElementById("play-again").addEventListener("click",()=>{
 startGameLoop();
 </script>
 
+</body>
+</html>
 </body>
 </html>
