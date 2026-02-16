@@ -5,8 +5,7 @@
 <title>Falling Tiles 18x18</title>
 <style>
 html, body { margin:0; padding:0; height:100%; width:100%; background:#111; color:white; font-family:Arial,sans-serif; display:flex; flex-direction:column; align-items:center; overflow:hidden; }
-#top-bar { display:flex; justify-content:center; width:100%; margin-top:5px; align-items:center; }
-#current-score { font-size:1em; }
+#top-bar { display:flex; justify-content:center; width:100%; margin-top:10px; align-items:center; font-family: monospace; font-size: 1.2em; }
 #game-container { flex:1; display:flex; justify-content:center; align-items:center; width:100%; }
 #game { display:grid; grid-template-columns: repeat(18, 1fr); grid-template-rows: repeat(18, 1fr); gap:2px; width:90vmin; height:90vmin; }
 .tile { background:#444; width:100%; height:100%; transition: background 0.3s, transform 0.4s, opacity 0.4s; }
@@ -17,9 +16,8 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
 #death-screen h2, #death-screen p { margin:5px; text-align:center; }
 #play-again { margin-top:10px; padding:6px 12px; cursor:pointer; border:none; border-radius:5px; }
 
-/* NEW BUTTON STYLE */
 #music-btn {
-    margin-left: 15px;
+    margin-left: 20px;
     background: #444;
     color: white;
     border: 1px solid #777;
@@ -28,12 +26,14 @@ html, body { margin:0; padding:0; height:100%; width:100%; background:#111; colo
     font-size: 14px;
     border-radius: 4px;
 }
+.credits { font-size: 0.6em; color: #888; margin-left: 10px; }
 </style>
 </head>
 <body>
 
 <div id="top-bar">
-    <div id="current-score">Score: 0 song by:John Bartmann</div>
+    <div>Score: <span id="score-val">0</span></div>
+    <div class="credits">Song: John Bartmann</div>
     <button id="music-btn" onclick="toggleMusic()">🎵 Music: OFF</button>
 </div>
 
@@ -59,7 +59,7 @@ const DROP_INTERVAL = 800;
 const game = document.getElementById("game");
 const deathScreen = document.getElementById("death-screen");
 const deathScore = document.getElementById("death-score");
-const currentScoreDiv = document.getElementById("current-score");
+const scoreSpan = document.getElementById("score-val"); // NEW: Only targets the number
 
 let grid = [];
 let player = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
@@ -80,13 +80,11 @@ function toggleMusic() {
         btn.style.background = "#444";
         isMusicOn = false;
     } else {
-        // This is the moment of truth!
         bgm.play().catch(e => {
             console.log("Error playing:", e);
-            alert("Music failed to play. Click 'OK' to try again.");
         });
         btn.innerText = "🎵 Music: ON";
-        btn.style.background = "#00b894"; // Green
+        btn.style.background = "#00b894"; 
         isMusicOn = true;
     }
 }
@@ -139,7 +137,10 @@ function triggerRandomDrop(){
         tile.element.classList.remove("warning");
         tile.element.classList.add("falling");
         score++;
-        currentScoreDiv.textContent = "Score: " + score;
+        
+        // FIX: Only update the number, leave the credits alone!
+        scoreSpan.textContent = score; 
+        
         if(player.x===t.x && player.y===t.y) gameOver();
         tile.dropping = false;
     }, WARNING_TIME);
@@ -158,14 +159,14 @@ function move(dx,dy){
 function gameOver(){
     paused=true;
     clearInterval(dropLoop);
-    deathScore.textContent="Score: "+score;
+    deathScore.textContent="Final Score: "+score;
     deathScreen.style.display="flex";
 }
 
 function startGameLoop(){
     paused=false;
     score=0;
-    currentScoreDiv.textContent="Score: "+score;
+    scoreSpan.textContent = score; // Reset only the number
     player={ x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
     createGrid();
     drawPlayer();
