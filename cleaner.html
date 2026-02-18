@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Protocol 67: PURGE</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: #000;
+        color: #00ff41;
+        font-family: 'Consolas', 'Monaco', monospace;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #scan-lines {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            to bottom,
+            rgba(255,255,255,0),
+            rgba(255,255,255,0) 50%,
+            rgba(0,0,0,0.2) 50%,
+            rgba(0,0,0,0.2)
+        );
+        background-size: 100% 4px;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    #overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, transparent 50%, #000 150%);
+        z-index: 11;
+        pointer-events: none;
+    }
+
+    #container {
+        z-index: 20;
+        text-align: center;
+        width: 80%;
+        max-width: 600px;
+        border: 2px solid #003300;
+        background-color: rgba(0, 10, 0, 0.9);
+        padding: 40px;
+        box-shadow: 0 0 20px #00ff41;
+        position: relative;
+    }
+
+    h1 {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 5px;
+        animation: glow 2s infinite alternate;
+    }
+
+    h2 {
+        font-size: 0.8rem;
+        color: #008f11;
+        margin-bottom: 30px;
+        border-bottom: 1px solid #003300;
+        padding-bottom: 10px;
+    }
+
+    #status-log {
+        height: 150px;
+        overflow-y: auto;
+        text-align: left;
+        font-size: 0.9rem;
+        border: 1px solid #003300;
+        padding: 10px;
+        margin-bottom: 20px;
+        background-color: #000;
+        color: #00ff41;
+        font-family: 'Courier New', Courier, monospace;
+    }
+
+    .log-entry {
+        margin: 2px 0;
+        opacity: 0;
+        animation: fadeIn 0.2s forwards;
+    }
+
+    .error { color: red; }
+    .success { color: cyan; font-weight: bold; }
+    .warning { color: yellow; }
+
+    #progress-container {
+        width: 100%;
+        height: 20px;
+        background-color: #002200;
+        margin-bottom: 30px;
+        position: relative;
+        display: none;
+    }
+
+    #progress-bar {
+        width: 0%;
+        height: 100%;
+        background-color: #00ff41;
+        box-shadow: 0 0 10px #00ff41;
+        transition: width 0.1s linear;
+    }
+
+    button {
+        background: transparent;
+        color: #00ff41;
+        border: 2px solid #00ff41;
+        padding: 15px 40px;
+        font-size: 1.2rem;
+        font-family: inherit;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: 0.3s;
+        letter-spacing: 2px;
+    }
+
+    button:hover {
+        background: #00ff41;
+        color: #000;
+        box-shadow: 0 0 20px #00ff41;
+    }
+
+    button:disabled {
+        border-color: #333;
+        color: #333;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+    }
+
+    @keyframes glow {
+        from { text-shadow: 0 0 5px #00ff41; }
+        to { text-shadow: 0 0 20px #00ff41, 0 0 10px #fff; }
+    }
+
+    @keyframes fadeIn {
+        to { opacity: 1; }
+    }
+
+    #final-message {
+        display: none;
+        font-size: 3rem;
+        color: cyan;
+        text-shadow: 0 0 30px cyan;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 100;
+        background: rgba(0,0,0,0.9);
+        padding: 50px;
+        border: 5px solid cyan;
+    }
+</style>
+</head>
+<body>
+
+<div id="scan-lines"></div>
+<div id="overlay"></div>
+<canvas id="matrix"></canvas>
+
+<div id="container">
+    <h1>Neural Scrubber</h1>
+    <h2>TARGET ID: 67 // STATUS: INFECTED</h2>
+
+    <div id="status-log">
+        <div class="log-entry">System Ready.</div>
+        <div class="log-entry">Waiting for user authorization...</div>
+    </div>
+
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <button id="start-btn" onclick="startSequence()">INITIATE PURGE</button>
+</div>
+
+<div id="final-message">MIND CLEAN</div>
+
+<script>
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const katakana = '01234589'; 
+    const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const nums = '01234589';
+    const alphabet = katakana + latin + nums;
+
+    const fontSize = 16;
+    const columns = canvas.width/fontSize;
+
+    const rainDrops = [];
+    for( let x = 0; x < columns; x++ ) {
+        rainDrops[x] = 1;
+    }
+
+    let intenseMode = false;
+
+    const draw = () => {
+        ctx.fillStyle = intenseMode ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = intenseMode ? '#F00' : '#0F0';
+        ctx.font = fontSize + 'px monospace';
+
+        for(let i = 0; i < rainDrops.length; i++) {
+            const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+            ctx.fillText(text, i*fontSize, rainDrops[i]*fontSize);
+
+            if(rainDrops[i]*fontSize > canvas.height && Math.random() > 0.975){
+                rainDrops[i] = 0;
+            }
+            rainDrops[i]++;
+        }
+    };
+
+    let interval = setInterval(draw, 30);
+
+    const logBox = document.getElementById('status-log');
+    const progressBar = document.getElementById('progress-bar');
+    const progressCont = document.getElementById('progress-container');
+    const startBtn = document.getElementById('start-btn');
+    const finalMsg = document.getElementById('final-message');
+    const mainContainer = document.getElementById('container');
+
+    function log(msg, type='') {
+        const div = document.createElement('div');
+        div.className = 'log-entry ' + type;
+        div.innerText = `> ${msg}`;
+        logBox.appendChild(div);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function startSequence() {
+        startBtn.disabled = true;
+        startBtn.innerText = "PROCESSING...";
+        progressCont.style.display = 'block';
+        
+        const steps = [
+            { t: 1000, m: "Connecting to Neural Interface...", type: "" },
+            { t: 2000, m: "Scanning memory sectors 00-99...", type: "" },
+            { t: 3000, m: "WARNING: Pattern '67' detected in sector 9.", type: "warning" },
+            { t: 3500, m: "WARNING: Pattern '67' detected in sector 4.", type: "warning" },
+            { t: 4000, m: "Isolating infected thoughts...", type: "" },
+            { t: 5500, m: "CRITICAL: '67' is resisting deletion.", type: "error" },
+            { t: 6000, m: "Overriding safety protocols...", type: "warning" },
+            { t: 7000, m: "INITIATING DEEP SCRUB.", type: "success" },
+            { t: 7500, m: "Deleting '6'...", type: "" },
+            { t: 8000, m: "Deleting '7'...", type: "" },
+            { t: 8500, m: "Merging '6' and '7' into NULL...", type: "" },
+            { t: 9500, m: "Clearing cache...", type: "" },
+            { t: 10500, m: "Verification complete. No '67' found.", type: "success" }
+        ];
+
+        let width = 0;
+        const progressInterval = setInterval(() => {
+            if (width >= 100) clearInterval(progressInterval);
+            else {
+                width += 0.5;
+                progressBar.style.width = width + '%';
+            }
+        }, 50);
+
+        steps.forEach(step => {
+            setTimeout(() => {
+                log(step.m, step.type);
+                if (step.type === 'error') {
+                    intenseMode = true;
+                    document.body.style.backgroundColor = '#100';
+                }
+                if (step.type === 'success' && step.m.includes("DEEP")) {
+                    intenseMode = false;
+                    document.body.style.backgroundColor = '#000';
+                }
+            }, step.t);
+        });
+
+        setTimeout(() => {
+            mainContainer.style.display = 'none';
+            finalMsg.style.display = 'block';
+            clearInterval(interval);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }, 12000);
+    }
+
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+
+</script>
+
+</body>
+</html>
